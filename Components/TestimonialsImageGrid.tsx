@@ -16,14 +16,11 @@ type TestimonialChannel = {
   key: string;
   label: string;
   url: string;
+  image: string;
 };
 
 const PAGE_SIZE = 12;
-const DEFAULT_CHANNELS: TestimonialChannel[] = [
-  { key: "channel1", label: "Saluran 1", url: "" },
-  { key: "channel2", label: "Saluran 2", url: "" },
-  { key: "channel3", label: "Saluran 3", url: "" },
-];
+const DEFAULT_CHANNELS: TestimonialChannel[] = [];
 
 const copy: Record<
   Locale,
@@ -91,6 +88,11 @@ function safeImageSrc(value: string | null | undefined) {
   return src.length > 0 ? src : "/testi/1.jpeg";
 }
 
+function safeChannelImageSrc(value: string | null | undefined) {
+  const src = String(value ?? "").trim();
+  return src.length > 0 ? src : "";
+}
+
 function getGalleryLayoutClass(itemCount: number): string {
   if (itemCount <= 1) return "max-w-md columns-1";
   if (itemCount === 2) return "max-w-3xl columns-2";
@@ -124,25 +126,20 @@ export default function TestimonialsImageGrid() {
             ? payload.items
             : [];
         const incomingChannels = Array.isArray(payload?.channels)
-          ? payload.channels
-              .map((item: { key?: string; label?: string; url?: string }, index: number) => ({
+          ? payload.channels.map((item: { key?: string; label?: string; url?: string; image?: string }, index: number) => ({
                 key: String(item?.key ?? `channel${index + 1}`).trim() || `channel${index + 1}`,
                 label: String(item?.label ?? `Saluran ${index + 1}`).trim() || `Saluran ${index + 1}`,
                 url: String(item?.url ?? "").trim(),
+                image: String(item?.image ?? "").trim(),
               }))
-              .slice(0, 3)
           : [];
         const legacyChannelUrl = String(payload?.channelUrl ?? "").trim();
         const nextChannels =
           incomingChannels.length > 0
-            ? DEFAULT_CHANNELS.map((slot, index) => ({
-                ...slot,
-                ...incomingChannels[index],
-                label: incomingChannels[index]?.label || slot.label,
-              }))
-            : DEFAULT_CHANNELS.map((slot, index) =>
-                index === 0 ? { ...slot, url: legacyChannelUrl } : slot
-              );
+            ? incomingChannels
+            : legacyChannelUrl
+              ? [{ key: "channel1", label: "Saluran 1", url: legacyChannelUrl, image: "" }]
+              : DEFAULT_CHANNELS;
         setChannels(nextChannels);
 
         if (data.length === 0) {
@@ -318,30 +315,49 @@ export default function TestimonialsImageGrid() {
               <div className="grid gap-3 px-5 py-5 sm:grid-cols-3">
                 {channels.map((channel) => {
                   const isReady = Boolean(channel.url);
+                  const channelImage = safeChannelImageSrc(channel.image);
                   return isReady ? (
                     <a
                       key={channel.key}
                       href={channel.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="rounded-2xl border border-[var(--border)] p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand)] hover:bg-[var(--surface-muted)]"
+                      className="overflow-hidden rounded-2xl border border-[var(--border)] text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand)] hover:bg-[var(--surface-muted)]"
                       style={{ backgroundColor: "var(--surface)" }}
                     >
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-[var(--foreground)]">{channel.label}</p>
-                        <ExternalLink className="h-4 w-4 text-[var(--brand)]" />
+                      {channelImage ? (
+                        <img src={channelImage} alt={channel.label} className="h-28 w-full object-cover" />
+                      ) : (
+                        <div className="flex h-28 items-center justify-center bg-[var(--surface-muted)]">
+                          <MessageCircle className="h-8 w-8 text-[var(--brand)]" />
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-[var(--foreground)]">{channel.label}</p>
+                          <ExternalLink className="h-4 w-4 shrink-0 text-[var(--brand)]" />
+                        </div>
+                        <p className="mt-2 text-xs text-[var(--foreground-muted)] line-clamp-2 break-all">{channel.url}</p>
+                        <p className="mt-3 text-xs font-semibold text-[var(--brand)]">{text.openChannel}</p>
                       </div>
-                      <p className="mt-2 text-xs text-[var(--foreground-muted)] line-clamp-2 break-all">{channel.url}</p>
-                      <p className="mt-3 text-xs font-semibold text-[var(--brand)]">{text.openChannel}</p>
                     </a>
                   ) : (
                     <div
                       key={channel.key}
-                      className="rounded-2xl border border-dashed border-[var(--border)] p-4 opacity-70"
+                      className="overflow-hidden rounded-2xl border border-dashed border-[var(--border)] opacity-70"
                       style={{ backgroundColor: "var(--surface-muted)" }}
                     >
-                      <p className="text-sm font-semibold text-[var(--foreground)]">{channel.label}</p>
-                      <p className="mt-2 text-xs text-[var(--foreground-muted)]">{text.unavailable}</p>
+                      {channelImage ? (
+                        <img src={channelImage} alt={channel.label} className="h-28 w-full object-cover" />
+                      ) : (
+                        <div className="flex h-28 items-center justify-center bg-[var(--surface)]">
+                          <MessageCircle className="h-8 w-8 text-[var(--brand)]" />
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <p className="text-sm font-semibold text-[var(--foreground)]">{channel.label}</p>
+                        <p className="mt-2 text-xs text-[var(--foreground-muted)]">{text.unavailable}</p>
+                      </div>
                     </div>
                   );
                 })}

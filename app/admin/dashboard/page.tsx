@@ -1764,24 +1764,82 @@ function DashboardSkeleton() {
   );
 }
 
+type EditableTestimonialChannel = {
+  key: string;
+  title: string;
+  url: string;
+  image: string;
+};
+
+function createTestimonialChannel(index: number): EditableTestimonialChannel {
+  return {
+    key: `channel_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 8)}`,
+    title: `Saluran ${index + 1}`,
+    url: "",
+    image: "",
+  };
+}
+
+function normalizeTestimonialChannel(input: unknown, index: number): EditableTestimonialChannel {
+  const raw = (typeof input === "object" && input !== null ? input : {}) as Record<string, unknown>;
+  return {
+    key: String(raw.key ?? raw.id ?? `channel${index + 1}`).trim() || `channel${index + 1}`,
+    title: String(raw.title ?? raw.label ?? `Saluran ${index + 1}`).trim() || `Saluran ${index + 1}`,
+    url: String(raw.url ?? "").trim(),
+    image: String(raw.image ?? "").trim(),
+  };
+}
+
+function parseTestimonialChannels(settings: Record<string, string>): EditableTestimonialChannel[] {
+  if (Object.prototype.hasOwnProperty.call(settings, "testimonial_channels_json")) {
+    try {
+      const parsed = JSON.parse(settings.testimonial_channels_json || "[]");
+      if (Array.isArray(parsed)) {
+        return parsed.map((item, index) => normalizeTestimonialChannel(item, index));
+      }
+    } catch {
+      // fallback to legacy settings below
+    }
+  }
+
+  const legacyChannels = [
+    {
+      key: "channel1",
+      title: "Saluran 1",
+      url: settings.testimonial_channel_1_url ?? settings.testimonial_channel_url ?? "",
+      image: "",
+    },
+    {
+      key: "channel2",
+      title: "Saluran 2",
+      url: settings.testimonial_channel_2_url ?? "",
+      image: "",
+    },
+    {
+      key: "channel3",
+      title: "Saluran 3",
+      url: settings.testimonial_channel_3_url ?? "",
+      image: "",
+    },
+  ].filter((item) => item.url.trim().length > 0);
+
+  return legacyChannels;
+}
+
 function SettingsTab({ settings, onRefresh }: { settings: Record<string, string>; onRefresh: () => void }) {
   const [siteLogo, setSiteLogo] = useState(settings.site_logo ?? "");
   const [siteTitle, setSiteTitle] = useState(settings.site_title ?? "");
   const [siteDescription, setSiteDescription] = useState(settings.site_description ?? "");
-  const [testimonialChannel1Url, setTestimonialChannel1Url] = useState(
-    settings.testimonial_channel_1_url ?? settings.testimonial_channel_url ?? ""
+  const [testimonialChannels, setTestimonialChannels] = useState<EditableTestimonialChannel[]>(
+    parseTestimonialChannels(settings)
   );
-  const [testimonialChannel2Url, setTestimonialChannel2Url] = useState(settings.testimonial_channel_2_url ?? "");
-  const [testimonialChannel3Url, setTestimonialChannel3Url] = useState(settings.testimonial_channel_3_url ?? "");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setSiteLogo(settings.site_logo ?? "");
     setSiteTitle(settings.site_title ?? "");
     setSiteDescription(settings.site_description ?? "");
-    setTestimonialChannel1Url(settings.testimonial_channel_1_url ?? settings.testimonial_channel_url ?? "");
-    setTestimonialChannel2Url(settings.testimonial_channel_2_url ?? "");
-    setTestimonialChannel3Url(settings.testimonial_channel_3_url ?? "");
+    setTestimonialChannels(parseTestimonialChannels(settings));
   }, [
     settings.site_logo,
     settings.site_title,
@@ -1790,7 +1848,22 @@ function SettingsTab({ settings, onRefresh }: { settings: Record<string, string>
     settings.testimonial_channel_1_url,
     settings.testimonial_channel_2_url,
     settings.testimonial_channel_3_url,
+    settings.testimonial_channels_json,
   ]);
+
+  const handleChannelChange = (key: string, patch: Partial<EditableTestimonialChannel>) => {
+    setTestimonialChannels((prev) =>
+      prev.map((channel) => (channel.key === key ? { ...channel, ...patch } : channel))
+    );
+  };
+
+  const handleAddChannel = () => {
+    setTestimonialChannels((prev) => [...prev, createTestimonialChannel(prev.length)]);
+  };
+
+  const handleRemoveChannel = (key: string) => {
+    setTestimonialChannels((prev) => prev.filter((channel) => channel.key !== key));
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -1807,30 +1880,38 @@ function SettingsTab({ settings, onRefresh }: { settings: Record<string, string>
         }
       };
 
-        await Promise.all([
-          saveSetting("site_logo", siteLogo),
-          saveSetting("site_title", siteTitle),
-          saveSetting("site_description", siteDescription),
-          saveSetting("testimonial_channel_url", testimonialChannel1Url),
-          saveSetting("testimonial_channel_1_url", testimonialChannel1Url),
-          saveSetting("testimonial_channel_2_url", testimonialChannel2Url),
-          saveSetting("testimonial_channel_3_url", testimonialChannel3Url),
-        ]);
-        pushSiteIdentityUpdate({
-          logo: siteLogo,
-          title: siteTitle,
-          description: siteDescription,
-        });
-        onRefresh();
-      } catch (error) {
-        alert(error instanceof Error ? error.message : "Gagal menyimpan pengaturan.");
-      } finally {
+      const normalizedChannels = testimonialChannels.map((channel, index) => ({
+        key: channel.key.trim() || `channel${index + 1}`,
+        title: channel.title.trim() || `Saluran ${index + 1}`,
+        url: channel.url.trim(),
+        image: channel.image.trim(),
+      }));
+
+      await Promise.all([
+        saveSetting("site_logo", siteLogo),
+        saveSetting("site_title", siteTitle),
+        saveSetting("site_description", siteDescription),
+        saveSetting("testimonial_channels_json", JSON.stringify(normalizedChannels)),
+        saveSetting("testimonial_channel_url", normalizedChannels[0]?.url ?? ""),
+        saveSetting("testimonial_channel_1_url", normalizedChannels[0]?.url ?? ""),
+        saveSetting("testimonial_channel_2_url", normalizedChannels[1]?.url ?? ""),
+        saveSetting("testimonial_channel_3_url", normalizedChannels[2]?.url ?? ""),
+      ]);
+      pushSiteIdentityUpdate({
+        logo: siteLogo,
+        title: siteTitle,
+        description: siteDescription,
+      });
+      onRefresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Gagal menyimpan pengaturan.");
+    } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="max-w-xl space-y-4">
+    <div className="max-w-4xl space-y-4">
       <h2 className="text-lg font-bold text-[var(--foreground)]">Pengaturan</h2>
       <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-4">
         <ImageUpload label="Logo Website" value={siteLogo} onChange={setSiteLogo} />
@@ -1853,36 +1934,73 @@ function SettingsTab({ settings, onRefresh }: { settings: Record<string, string>
             placeholder="Deskripsi singkat website kamu."
           />
         </div>
-        <div>
-          <Label>Link Saluran Testimoni 1</Label>
-          <input
-            className={inputCls}
-            value={testimonialChannel1Url}
-            onChange={(e) => setTestimonialChannel1Url(e.target.value)}
-            placeholder="https://whatsapp.com/channel/..."
-          />
-          <p className="mt-1 text-xs text-[var(--foreground-muted)]">
-            Tombol &quot;Lihat Semua Testimoni&quot; akan membuka popup pilihan saluran ini.
-          </p>
+
+        <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-[var(--foreground)]">Saluran Testimoni</p>
+              <p className="text-xs text-[var(--foreground-muted)]">
+                Popup &quot;Lihat Semua Testimoni&quot; akan mengikuti daftar saluran di bawah ini.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddChannel}
+              className="rounded-lg bg-[var(--brand)] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[var(--brand-hover)]"
+            >
+              + Tambah Saluran
+            </button>
+          </div>
+
+          {testimonialChannels.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[var(--border)] p-4 text-sm text-[var(--foreground-muted)]">
+              Belum ada saluran. Tambahkan saluran baru supaya popup testimoni punya pilihan channel.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {testimonialChannels.map((channel, index) => (
+                <div key={channel.key} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-[var(--foreground)]">
+                      {channel.title.trim() || `Saluran ${index + 1}`}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveChannel(channel.key)}
+                      className="rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/20"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                  <div>
+                    <Label>Judul Saluran</Label>
+                    <input
+                      className={inputCls}
+                      value={channel.title}
+                      onChange={(e) => handleChannelChange(channel.key, { title: e.target.value })}
+                      placeholder={`Contoh: Testimoni ${index + 1}`}
+                    />
+                  </div>
+                  <div>
+                    <Label>Link Saluran</Label>
+                    <input
+                      className={inputCls}
+                      value={channel.url}
+                      onChange={(e) => handleChannelChange(channel.key, { url: e.target.value })}
+                      placeholder="https://whatsapp.com/channel/..."
+                    />
+                  </div>
+                  <ImageUpload
+                    label="Gambar Saluran"
+                    value={channel.image}
+                    onChange={(path) => handleChannelChange(channel.key, { image: path })}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-        <div>
-          <Label>Link Saluran Testimoni 2</Label>
-          <input
-            className={inputCls}
-            value={testimonialChannel2Url}
-            onChange={(e) => setTestimonialChannel2Url(e.target.value)}
-            placeholder="https://whatsapp.com/channel/..."
-          />
-        </div>
-        <div>
-          <Label>Link Saluran Testimoni 3</Label>
-          <input
-            className={inputCls}
-            value={testimonialChannel3Url}
-            onChange={(e) => setTestimonialChannel3Url(e.target.value)}
-            placeholder="https://whatsapp.com/channel/..."
-          />
-        </div>
+
         <button
           onClick={handleSave}
           disabled={saving}

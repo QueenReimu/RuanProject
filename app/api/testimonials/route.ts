@@ -19,6 +19,7 @@ type TestimonialChannel = {
   key: string;
   label: string;
   url: string;
+  image: string;
 };
 
 function isMissingTable(error: unknown): boolean {
@@ -50,9 +51,9 @@ async function getTestimonialChannelUrl(): Promise<string> {
 async function getTestimonialChannels(): Promise<TestimonialChannel[]> {
   const fallbackPrimaryUrl = await getTestimonialChannelUrl();
   const defaultChannels: TestimonialChannel[] = [
-    { key: "channel1", label: "Saluran 1", url: fallbackPrimaryUrl },
-    { key: "channel2", label: "Saluran 2", url: "" },
-    { key: "channel3", label: "Saluran 3", url: "" },
+    { key: "channel1", label: "Saluran 1", url: fallbackPrimaryUrl, image: "" },
+    { key: "channel2", label: "Saluran 2", url: "", image: "" },
+    { key: "channel3", label: "Saluran 3", url: "", image: "" },
   ];
 
   if (!supabaseAdmin) return defaultChannels;
@@ -61,6 +62,7 @@ async function getTestimonialChannels(): Promise<TestimonialChannel[]> {
     .from("site_settings")
     .select("key, value")
     .in("key", [
+      "testimonial_channels_json",
       "testimonial_channel_url",
       "testimonial_channel_1_url",
       "testimonial_channel_2_url",
@@ -79,21 +81,40 @@ async function getTestimonialChannels(): Promise<TestimonialChannel[]> {
     return acc;
   }, {});
 
+  if (Object.prototype.hasOwnProperty.call(settingsMap, "testimonial_channels_json")) {
+    try {
+      const parsed = JSON.parse(settingsMap.testimonial_channels_json || "[]");
+      if (Array.isArray(parsed)) {
+        return parsed.map((item, index) => ({
+          key: String(item?.key ?? item?.id ?? `channel${index + 1}`).trim() || `channel${index + 1}`,
+          label: String(item?.label ?? item?.title ?? `Saluran ${index + 1}`).trim() || `Saluran ${index + 1}`,
+          url: String(item?.url ?? "").trim(),
+          image: String(item?.image ?? "").trim(),
+        }));
+      }
+    } catch {
+      return defaultChannels;
+    }
+  }
+
   return [
     {
       key: "channel1",
       label: "Saluran 1",
       url: settingsMap.testimonial_channel_1_url || settingsMap.testimonial_channel_url || fallbackPrimaryUrl,
+      image: "",
     },
     {
       key: "channel2",
       label: "Saluran 2",
       url: settingsMap.testimonial_channel_2_url || "",
+      image: "",
     },
     {
       key: "channel3",
       label: "Saluran 3",
       url: settingsMap.testimonial_channel_3_url || "",
+      image: "",
     },
   ];
 }
