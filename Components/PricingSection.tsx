@@ -322,6 +322,52 @@ function ProductCard({
   );
 }
 
+function PricingLoadingSkeleton() {
+  return (
+    <section id="pricing" className="bg-[var(--surface-muted)] px-4 py-16 sm:px-6 sm:py-20">
+      <div className="mx-auto max-w-7xl space-y-10">
+        <div className="space-y-3 text-center">
+          <div className="mx-auto h-3 w-24 rounded-full bg-[var(--brand-soft)]/70" />
+          <div className="mx-auto h-10 w-full max-w-2xl rounded-2xl bg-[var(--surface)]" />
+          <div className="mx-auto h-4 w-full max-w-xl rounded-full bg-[var(--surface)]" />
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-2.5">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="h-11 w-40 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--surface)]" />
+          ))}
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-2">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="h-10 w-32 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--surface)]" />
+          ))}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <div
+              key={index}
+              className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] sm:rounded-3xl"
+            >
+              <div className="h-32 animate-pulse bg-[var(--surface-muted)] sm:h-44" />
+              <div className="space-y-3 p-2.5 sm:p-5">
+                <div className="h-5 w-4/5 rounded-full bg-[var(--surface-muted)]" />
+                <div className="h-4 w-full rounded-full bg-[var(--surface-muted)]" />
+                <div className="h-4 w-5/6 rounded-full bg-[var(--surface-muted)]" />
+                <div className="flex items-end justify-between gap-3 pt-2">
+                  <div className="h-7 w-24 rounded-full bg-[var(--surface-muted)]" />
+                  <div className="h-10 w-20 rounded-xl bg-[var(--surface-muted)]" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ConfirmModal({
   product,
   gameName,
@@ -605,14 +651,7 @@ export default function PricingSection() {
   }, [discountDayBadgeText, discountDayMinPrice, discountDayPercent]);
 
   if (loading) {
-    return (
-      <section id="pricing" className="flex min-h-[48vh] items-center justify-center px-4 py-20">
-        <div className="text-center">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[var(--brand-soft)] border-t-[var(--brand)]" />
-          <p className="mt-3 text-sm text-[var(--foreground-muted)]">{text.loading}</p>
-        </div>
-      </section>
-    );
+    return <PricingLoadingSkeleton />;
   }
 
   if (apiError || gameNames.length === 0) {

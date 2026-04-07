@@ -1,5 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ThemeProvider } from "@/Components/ThemeProvider";
 import { LocaleProvider } from "@/Components/LocaleProvider";
 import { SiteIdentityProvider } from "@/Components/SiteIdentityProvider";
@@ -128,6 +130,8 @@ export default async function RootLayout({
             </LocaleProvider>
           </SiteIdentityProvider>
         </ThemeProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

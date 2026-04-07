@@ -2,58 +2,43 @@
 
 import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
+import Image from "next/image";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { FALLBACK_GACHA_IMAGES, type PublicGachaImage } from "@/lib/gacha-images";
 
-type CarouselImage = {
-  id: number;
-  src: string;
-  alt: string;
-  display_order: number;
-};
-
-const FALLBACK_IMAGES: CarouselImage[] = [
-  { id: 1, src: "/products/Genshin.jpg", alt: "Genshin Impact", display_order: 1 },
-  { id: 2, src: "/products/WutheringWaves.jpg", alt: "Wuthering Waves", display_order: 2 },
-];
-
-function sanitizeCarouselImages(input: CarouselImage[] | unknown): CarouselImage[] {
-  if (!Array.isArray(input)) return FALLBACK_IMAGES;
-  const cleaned = input
-    .filter((item): item is CarouselImage => Boolean(item && typeof item === "object"))
-    .map((item) => ({
-      id: Number(item.id ?? 0),
-      src: String(item.src ?? "").trim(),
-      alt: String(item.alt ?? "Banner"),
-      display_order: Number(item.display_order ?? 0),
-    }))
-    .filter((item) => item.src.length > 0);
-
-  return cleaned.length > 0 ? cleaned : FALLBACK_IMAGES;
-}
-
-export default function HeroSection() {
-  const [images, setImages] = useState<CarouselImage[]>([]);
-  const [loaded, setLoaded] = useState(false);
+export default function HeroSection({
+  initialImages = FALLBACK_GACHA_IMAGES,
+}: {
+  initialImages?: PublicGachaImage[];
+}) {
+  const [images, setImages] = useState<PublicGachaImage[]>(initialImages.length > 0 ? initialImages : FALLBACK_GACHA_IMAGES);
+  const [loaded, setLoaded] = useState(images.length > 0);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [activeImage, setActiveImage] = useState<CarouselImage | null>(null);
+  const [activeImage, setActiveImage] = useState<PublicGachaImage | null>(null);
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: "start" });
 
   useEffect(() => {
+    if (initialImages.length > 0) {
+      setImages(initialImages);
+      setLoaded(true);
+      return;
+    }
+
     const fetchImages = async () => {
       try {
-        const res = await fetch("/api/gacha-images");
+        const res = await fetch("/api/gacha-images", { cache: "no-store" });
         if (!res.ok) throw new Error("fetch failed");
         const data = await res.json();
-        setImages(sanitizeCarouselImages(data));
+        setImages(Array.isArray(data) && data.length > 0 ? data : FALLBACK_GACHA_IMAGES);
       } catch {
-        setImages(FALLBACK_IMAGES);
+        setImages(FALLBACK_GACHA_IMAGES);
       } finally {
         setLoaded(true);
       }
     };
 
     fetchImages();
-  }, []);
+  }, [initialImages]);
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
@@ -107,11 +92,13 @@ export default function HeroSection() {
                         aria-label={`Zoom ${image.alt}`}
                       >
                         <div className="relative aspect-[16/9] min-h-[220px] bg-[var(--surface-muted)] sm:aspect-[21/9] sm:min-h-[260px] lg:min-h-[340px]">
-                          <img
+                          <Image
                             src={image.src}
                             alt={image.alt}
-                            loading="lazy"
-                            className="h-full w-full object-cover object-center sm:object-contain"
+                            fill
+                            priority={selectedIndex === 0 && image.id === images[0]?.id}
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 94vw, 1280px"
+                            className="object-cover object-center sm:object-contain"
                           />
                           <div className="absolute inset-0 bg-gradient-to-r from-black/8 via-transparent to-black/8" />
                         </div>
