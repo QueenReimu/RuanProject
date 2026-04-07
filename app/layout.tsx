@@ -7,6 +7,7 @@ import AnalyticsTracker from "@/Components/AnalyticsTracker";
 import { readSiteIdentity } from "@/lib/site-identity";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+const GOOGLE_SITE_VERIFICATION = "zd0RZ-_RnTmeMFTmrxGObnaUeCOpQd8lrpWPXS5zhc8";
 
 function resolveSiteOrigin() {
   const raw =
@@ -62,6 +63,17 @@ export async function generateMetadata(): Promise<Metadata> {
     title: identity.title,
     description: identity.description,
     generator: "Ruan Joki Games",
+    verification: {
+      google: GOOGLE_SITE_VERIFICATION,
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+      },
+    },
     icons: {
       icon: versionedLogo || absoluteLogo || identity.logo,
       apple: versionedLogo || absoluteLogo || identity.logo,
