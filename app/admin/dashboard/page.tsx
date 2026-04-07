@@ -414,6 +414,7 @@ function ProductsTab({ products, categories, settings, onRefresh }: {
   const [filterGame, setFilterGame] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [copyingId, setCopyingId] = useState<number | null>(null);
   const emptyForm = {
     category_id: categories[0]?.id ?? 1,
     title: "", description: "", price: "", original_price: "",
@@ -481,6 +482,27 @@ function ProductsTab({ products, categories, settings, onRefresh }: {
     setShowForm(true);
   };
 
+  const buildCopyTitle = (product: Product) => {
+    const baseTitle = `${product.title} Copy`.trim();
+    let nextTitle = baseTitle;
+    let copyIndex = 2;
+
+    const hasTitle = (title: string) =>
+      products.some(
+        (item) =>
+          item.id !== product.id &&
+          item.category_id === product.category_id &&
+          item.title.trim().toLowerCase() === title.trim().toLowerCase()
+      );
+
+    while (hasTitle(nextTitle)) {
+      nextTitle = `${baseTitle} ${copyIndex}`;
+      copyIndex += 1;
+    }
+
+    return nextTitle;
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -502,6 +524,41 @@ function ProductsTab({ products, categories, settings, onRefresh }: {
     if (!confirm("Hapus produk ini?")) return;
     await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
     onRefresh();
+  };
+
+  const handleCopy = async (product: Product) => {
+    setCopyingId(product.id);
+    try {
+      const payload = {
+        category_id: product.category_id,
+        title: buildCopyTitle(product),
+        description: product.description ?? "",
+        price: product.price,
+        original_price: product.original_price ?? "",
+        discount: product.discount ?? 0,
+        is_bestseller: product.is_bestseller,
+        is_hidden: product.is_hidden,
+        image: product.image ?? "",
+        display_order: Number(product.display_order ?? 0) + 1,
+      };
+
+      const response = await fetch("/api/admin/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(String(data?.error ?? "Gagal menyalin produk."));
+      }
+
+      onRefresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Gagal menyalin produk.");
+    } finally {
+      setCopyingId(null);
+    }
   };
 
   const handleToggleHidden = async (p: Product) => {
@@ -854,13 +911,20 @@ function ProductsTab({ products, categories, settings, onRefresh }: {
                   <span className="text-[var(--foreground-muted)] text-xs line-through">{cardOriginalPrice}</span>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button onClick={() => openEdit(p)}
-                  className="flex-1 text-xs bg-[var(--surface-muted)] hover:bg-[var(--surface-muted)] text-[var(--foreground)] py-2 rounded-lg transition-all">
+                  className="text-xs bg-[var(--surface-muted)] hover:bg-[var(--surface-muted)] text-[var(--foreground)] py-2 rounded-lg transition-all">
                   Edit
                 </button>
+                <button
+                  onClick={() => handleCopy(p)}
+                  disabled={copyingId === p.id}
+                  className="text-xs bg-violet-500/20 hover:bg-violet-500/40 text-violet-300 py-2 rounded-lg transition-all disabled:opacity-50"
+                >
+                  {copyingId === p.id ? "Copy..." : "Copy"}
+                </button>
                 <button onClick={() => handleToggleHidden(p)}
-                  className={`flex-1 text-xs py-2 rounded-lg transition-all ${
+                  className={`text-xs py-2 rounded-lg transition-all ${
                     p.is_hidden
                       ? "bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-400"
                       : "bg-yellow-500/20 hover:bg-yellow-500/40 text-yellow-400"
@@ -868,7 +932,7 @@ function ProductsTab({ products, categories, settings, onRefresh }: {
                   {p.is_hidden ? "Unhide" : "Hide"}
                 </button>
                 <button onClick={() => handleDelete(p.id)}
-                  className="flex-1 text-xs bg-red-500/20 hover:bg-red-500/40 text-red-400 py-2 rounded-lg transition-all">
+                  className="text-xs bg-red-500/20 hover:bg-red-500/40 text-red-400 py-2 rounded-lg transition-all">
                   Hapus
                 </button>
               </div>
