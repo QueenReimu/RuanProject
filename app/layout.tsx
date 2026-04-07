@@ -36,10 +36,23 @@ function resolveAssetUrl(assetPath: string, origin: string) {
   }
 }
 
+function withVersionParam(url: string, versionToken?: string) {
+  if (!url || !versionToken) return url;
+
+  try {
+    const nextUrl = new URL(url);
+    nextUrl.searchParams.set("v", versionToken);
+    return nextUrl.toString();
+  } catch {
+    return url;
+  }
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const identity = await readSiteIdentity();
   const origin = resolveSiteOrigin();
   const absoluteLogo = resolveAssetUrl(identity.logo, origin);
+  const versionedLogo = withVersionParam(absoluteLogo, identity.versionToken);
 
   return {
     metadataBase: new URL(origin),
@@ -50,8 +63,8 @@ export async function generateMetadata(): Promise<Metadata> {
     description: identity.description,
     generator: "Ruan Joki Games",
     icons: {
-      icon: absoluteLogo || identity.logo,
-      apple: absoluteLogo || identity.logo,
+      icon: versionedLogo || absoluteLogo || identity.logo,
+      apple: versionedLogo || absoluteLogo || identity.logo,
     },
     openGraph: {
       title: identity.title,
@@ -59,20 +72,20 @@ export async function generateMetadata(): Promise<Metadata> {
       type: "website",
       url: origin,
       siteName: identity.title,
-      images: absoluteLogo
+      images: versionedLogo
         ? [
             {
-              url: absoluteLogo,
+              url: versionedLogo,
               alt: identity.title,
             },
           ]
         : undefined,
     },
     twitter: {
-      card: absoluteLogo ? "summary_large_image" : "summary",
+      card: versionedLogo ? "summary_large_image" : "summary",
       title: identity.title,
       description: identity.description,
-      images: absoluteLogo ? [absoluteLogo] : undefined,
+      images: versionedLogo ? [versionedLogo] : undefined,
     },
   };
 }
