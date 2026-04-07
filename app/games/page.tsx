@@ -244,6 +244,91 @@ export default function GamesPage() {
 
   const isReady = copyLoaded && gamesLoaded;
 
+  if (!isReady) {
+    return (
+      <div className="min-h-screen text-[var(--foreground)]" style={{ backgroundColor: "var(--background)" }}>
+        <Navbar />
+
+        <section className="px-4 pb-14 pt-14 sm:px-6 sm:pb-16 sm:pt-16">
+          <div className="mx-auto max-w-4xl text-center">
+            <div className="mx-auto h-8 w-36 animate-pulse rounded-full bg-[var(--surface-muted)]" />
+            <div className="mx-auto mt-4 h-12 w-80 max-w-full animate-pulse rounded bg-[var(--surface-muted)]" />
+            <div className="mx-auto mt-4 h-5 w-[32rem] max-w-full animate-pulse rounded bg-[var(--surface-muted)]" />
+          </div>
+        </section>
+
+        <section className="px-4 pb-10 sm:px-6 sm:pb-12">
+          <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-4">
+            {[0, 1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className="animate-pulse rounded-2xl border border-[var(--border)] p-4 text-center"
+                style={{ backgroundColor: "var(--surface-muted)" }}
+              >
+                <div className="mx-auto h-8 w-20 rounded bg-[var(--surface)]" />
+                <div className="mx-auto mt-3 h-4 w-24 rounded bg-[var(--surface)]" />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="px-4 py-14 sm:px-6 sm:py-16" style={{ backgroundColor: "var(--surface-muted)" }}>
+          <div className="mx-auto max-w-6xl space-y-5">
+            {[0, 1].map((item) => (
+              <div
+                key={item}
+                className="animate-pulse overflow-hidden rounded-3xl border border-[var(--border)]"
+                style={{ backgroundColor: "var(--surface)" }}
+              >
+                <div className="grid lg:grid-cols-[280px_1fr]">
+                  <div className="h-56 bg-[var(--surface-muted)] lg:h-full" />
+                  <div className="space-y-4 p-6 sm:p-7">
+                    <div className="flex items-start gap-3">
+                      <div className="h-12 w-12 rounded-xl bg-[var(--surface-muted)]" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-6 w-40 rounded bg-[var(--surface-muted)]" />
+                        <div className="h-4 w-56 rounded bg-[var(--surface-muted)]" />
+                      </div>
+                    </div>
+                    <div className="h-4 w-full rounded bg-[var(--surface-muted)]" />
+                    <div className="h-4 w-11/12 rounded bg-[var(--surface-muted)]" />
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {[0, 1, 2, 3].map((service) => (
+                        <div key={service} className="h-4 rounded bg-[var(--surface-muted)]" />
+                      ))}
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="h-10 w-28 rounded-xl bg-[var(--surface-muted)]" />
+                      <div className="h-10 w-28 rounded-xl bg-[var(--surface-muted)]" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="px-4 py-14 sm:px-6 sm:py-16">
+          <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-3">
+            {[0, 1, 2].map((item) => (
+              <div
+                key={item}
+                className="animate-pulse rounded-2xl border border-[var(--border)] p-5"
+                style={{ backgroundColor: "var(--surface)" }}
+              >
+                <div className="h-5 w-5 rounded bg-[var(--surface-muted)]" />
+                <div className="mt-2 h-4 w-28 rounded bg-[var(--surface-muted)]" />
+                <div className="mt-2 h-3 w-full rounded bg-[var(--surface-muted)]" />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen text-[var(--foreground)]" style={{ backgroundColor: "var(--background)" }}>
       <Navbar />

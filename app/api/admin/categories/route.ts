@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifyAdminSession } from "@/lib/auth";
+import { readCategoryHiddenMap, setCategoryHiddenState } from "@/lib/category-hidden-store";
 
 function isMissingColumn(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
@@ -26,15 +27,25 @@ export async function GET(request: Request) {
     const isAdmin = await verifyAdminSession(request);
     if (!isAdmin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { data, error } = await supabaseAdmin!
+    const [queryResult, hiddenMap] = await Promise.all([
+      supabaseAdmin!
       .from("categories")
       .select("*, games(id, key, label)")
       .order("display_order")
-      .order("id");
+      .order("id"),
+      readCategoryHiddenMap(),
+    ]);
 
-    if (error) throw error;
-    return NextResponse.json(data ?? []);
-  } catch {
+    if (queryResult.error) throw queryResult.error;
+
+    const rows = ((queryResult.data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+      ...row,
+      is_hidden: typeof row.is_hidden === "boolean" ? row.is_hidden : Boolean(hiddenMap[Number(row.id ?? 0)]),
+    }));
+
+    return NextResponse.json(rows);
+  } catch (error) {
+    console.error("Admin categories GET error:", error);
     return NextResponse.json({ error: "Failed to fetch categories" }, { status: 500 });
   }
 }
@@ -88,7 +99,19 @@ export async function POST(request: Request) {
       throw result.error;
     }
 
-    return NextResponse.json(result.data, { status: 201 });
+    const createdCategory = result.data as { id?: number } | null;
+    const createdId = Number(createdCategory?.id ?? 0);
+    if (createdId > 0) {
+      await setCategoryHiddenState(createdId, Boolean(payload.is_hidden));
+    }
+
+    return NextResponse.json(
+      {
+        ...createdCategory,
+        is_hidden: Boolean(payload.is_hidden),
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Admin categories POST error:", error);
     return NextResponse.json({ error: "Failed to create category" }, { status: 500 });

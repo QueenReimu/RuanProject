@@ -11,7 +11,14 @@ const NO_STORE_HEADERS = {
 };
 
 type SettingRow = {
+  key?: string | null;
   value: string | null;
+};
+
+type TestimonialChannel = {
+  key: string;
+  label: string;
+  url: string;
 };
 
 function isMissingTable(error: unknown): boolean {
@@ -40,12 +47,64 @@ async function getTestimonialChannelUrl(): Promise<string> {
   return url || fallback;
 }
 
+async function getTestimonialChannels(): Promise<TestimonialChannel[]> {
+  const fallbackPrimaryUrl = await getTestimonialChannelUrl();
+  const defaultChannels: TestimonialChannel[] = [
+    { key: "channel1", label: "Saluran 1", url: fallbackPrimaryUrl },
+    { key: "channel2", label: "Saluran 2", url: "" },
+    { key: "channel3", label: "Saluran 3", url: "" },
+  ];
+
+  if (!supabaseAdmin) return defaultChannels;
+
+  const { data, error } = await supabaseAdmin
+    .from("site_settings")
+    .select("key, value")
+    .in("key", [
+      "testimonial_channel_url",
+      "testimonial_channel_1_url",
+      "testimonial_channel_2_url",
+      "testimonial_channel_3_url",
+    ]);
+
+  if (error) {
+    if (isMissingTable(error)) return defaultChannels;
+    throw error;
+  }
+
+  const settingsMap = ((data ?? []) as SettingRow[]).reduce<Record<string, string>>((acc, row) => {
+    const key = String(row.key ?? "").trim();
+    if (!key) return acc;
+    acc[key] = String(row.value ?? "").trim();
+    return acc;
+  }, {});
+
+  return [
+    {
+      key: "channel1",
+      label: "Saluran 1",
+      url: settingsMap.testimonial_channel_1_url || settingsMap.testimonial_channel_url || fallbackPrimaryUrl,
+    },
+    {
+      key: "channel2",
+      label: "Saluran 2",
+      url: settingsMap.testimonial_channel_2_url || "",
+    },
+    {
+      key: "channel3",
+      label: "Saluran 3",
+      url: settingsMap.testimonial_channel_3_url || "",
+    },
+  ];
+}
+
 export async function GET() {
   try {
-    const [data, channelUrl] = await Promise.all([
+    const [data, channels] = await Promise.all([
       getTestimonials(),
-      getTestimonialChannelUrl(),
+      getTestimonialChannels(),
     ]);
+    const channelUrl = channels.find((item) => item.url)?.url ?? "";
 
     const items = data
       .filter((item) => !item.is_hidden)
@@ -62,6 +121,7 @@ export async function GET() {
       {
         items,
         channelUrl,
+        channels,
       },
       { headers: NO_STORE_HEADERS }
     );

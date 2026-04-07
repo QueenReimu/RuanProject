@@ -2,57 +2,11 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/Components/ThemeProvider";
 import { LocaleProvider } from "@/Components/LocaleProvider";
+import { SiteIdentityProvider } from "@/Components/SiteIdentityProvider";
 import AnalyticsTracker from "@/Components/AnalyticsTracker";
-import { siteConfig } from "@/config/site";
-import { supabaseAdmin } from "@/lib/supabase";
-
-const DEFAULT_ICON = "/4V2.png";
+import { readSiteIdentity } from "@/lib/site-identity";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-function isMissingTable(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const maybeCode = "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
-  return maybeCode === "42P01" || maybeCode === "PGRST205";
-}
-
-async function readSiteIdentity() {
-  const fallback = {
-    title: siteConfig.name,
-    description: siteConfig.description,
-    logo: DEFAULT_ICON,
-  };
-
-  if (!supabaseAdmin) return fallback;
-
-  try {
-    const { data, error } = await supabaseAdmin
-      .from("site_settings")
-      .select("key, value")
-      .in("key", ["site_title", "site_description", "site_logo"]);
-
-    if (error) {
-      if (isMissingTable(error)) return fallback;
-      throw error;
-    }
-
-    const settingMap = ((data ?? []) as Array<{ key: string; value: string | null }>).reduce<Record<string, string>>(
-      (acc, row) => {
-        acc[row.key] = String(row.value ?? "").trim();
-        return acc;
-      },
-      {}
-    );
-
-    return {
-      title: settingMap.site_title || fallback.title,
-      description: settingMap.site_description || fallback.description,
-      logo: settingMap.site_logo || fallback.logo,
-    };
-  } catch {
-    return fallback;
-  }
-}
 
 function resolveSiteOrigin() {
   const raw =
@@ -120,11 +74,13 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const identity = await readSiteIdentity();
+
   return (
     <html lang="id" suppressHydrationWarning>
       <head>
@@ -137,10 +93,12 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <ThemeProvider>
-          <LocaleProvider>
-            <AnalyticsTracker />
-            {children}
-          </LocaleProvider>
+          <SiteIdentityProvider initialIdentity={identity}>
+            <LocaleProvider>
+              <AnalyticsTracker />
+              {children}
+            </LocaleProvider>
+          </SiteIdentityProvider>
         </ThemeProvider>
       </body>
     </html>

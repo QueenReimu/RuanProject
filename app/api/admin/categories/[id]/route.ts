@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifyAdminSession } from "@/lib/auth";
+import { removeCategoryHiddenState, setCategoryHiddenState } from "@/lib/category-hidden-store";
 
 function isMissingColumn(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
@@ -52,19 +53,21 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       const legacyUpdates = { ...updates };
       delete legacyUpdates.is_hidden;
 
-      if (Object.keys(legacyUpdates).length === 0) {
-        return NextResponse.json(
-          { error: "Fitur sembunyikan kategori butuh migration terbaru di database." },
-          { status: 400 }
-        );
+      if (Object.keys(legacyUpdates).length > 0) {
+        result = await supabaseAdmin!
+          .from("categories")
+          .update(legacyUpdates)
+          .eq("id", Number(id))
+          .select()
+          .single();
+      } else {
+        const current = await supabaseAdmin!
+          .from("categories")
+          .select("*")
+          .eq("id", Number(id))
+          .single();
+        result = current;
       }
-
-      result = await supabaseAdmin!
-        .from("categories")
-        .update(legacyUpdates)
-        .eq("id", Number(id))
-        .select()
-        .single();
     }
 
     if (result.error) {
@@ -77,7 +80,14 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       throw result.error;
     }
 
-    return NextResponse.json(result.data);
+    if ("is_hidden" in updates) {
+      await setCategoryHiddenState(Number(id), Boolean(updates.is_hidden));
+    }
+
+    return NextResponse.json({
+      ...(result.data as Record<string, unknown> | null),
+      is_hidden: "is_hidden" in updates ? Boolean(updates.is_hidden) : (result.data as { is_hidden?: boolean } | null)?.is_hidden,
+    });
   } catch (error) {
     console.error("Admin categories PUT error:", error);
     return NextResponse.json({ error: "Failed to update category" }, { status: 500 });
@@ -92,6 +102,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const { id } = await params;
     const { error } = await supabaseAdmin!.from("categories").delete().eq("id", Number(id));
     if (error) throw error;
+    await removeCategoryHiddenState(Number(id));
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Admin categories DELETE error:", error);

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Globe, Menu, Moon, Search, Sun, X } from "lucide-react";
 import { useLocale, type Locale } from "@/Components/LocaleProvider";
+import { useSiteIdentity } from "@/Components/SiteIdentityProvider";
 import { useTheme } from "@/Components/ThemeProvider";
 
 type SearchResult = {
@@ -91,6 +92,7 @@ const languageList: Array<{ code: Locale; label: string; short: string }> = [
 export default function Navbar() {
   const pathname = usePathname();
   const { locale, setLocale } = useLocale();
+  const { identity, setIdentity } = useSiteIdentity();
   const { resolvedTheme, setTheme } = useTheme();
 
   const text = copy[locale];
@@ -100,10 +102,6 @@ export default function Navbar() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [allProducts, setAllProducts] = useState<SearchResult[]>([]);
-  const [siteLogo, setSiteLogo] = useState("");
-  const [siteTitle, setSiteTitle] = useState("");
-  const [siteDescription, setSiteDescription] = useState("");
-  const [identityLoaded, setIdentityLoaded] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -120,7 +118,7 @@ export default function Navbar() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const res = await fetch("/api/products");
+        const res = await fetch("/api/products", { cache: "no-store" });
         if (!res.ok) return;
         const data = await res.json();
         const publicSettings = (data?.siteSettings ?? {}) as {
@@ -133,9 +131,13 @@ export default function Navbar() {
         const nextTitle = String(publicSettings.siteTitle ?? "").trim();
         const nextDescription = String(publicSettings.siteDescription ?? "").trim();
 
-        if (nextLogo) setSiteLogo(nextLogo);
-        if (nextTitle) setSiteTitle(nextTitle);
-        if (nextDescription) setSiteDescription(nextDescription);
+        if (nextLogo || nextTitle || nextDescription) {
+          setIdentity({
+            logo: nextLogo || identity.logo,
+            title: nextTitle || identity.title,
+            description: nextDescription || identity.description,
+          });
+        }
 
         const results: SearchResult[] = [];
 
@@ -159,21 +161,19 @@ export default function Navbar() {
         setAllProducts(results);
       } catch {
         setAllProducts([]);
-      } finally {
-        setIdentityLoaded(true);
       }
     };
 
     fetchProducts();
-  }, []);
+  }, [identity.description, identity.logo, identity.title, setIdentity]);
 
   useEffect(() => {
-    const title = siteTitle.trim();
+    const title = identity.title.trim();
     if (title) {
       document.title = title;
     }
 
-    const description = siteDescription.trim();
+    const description = identity.description.trim();
     if (!description) return;
 
     const currentMeta = document.querySelector('meta[name="description"]');
@@ -186,7 +186,7 @@ export default function Navbar() {
     meta.setAttribute("name", "description");
     meta.setAttribute("content", description);
     document.head.appendChild(meta);
-  }, [siteDescription, siteTitle]);
+  }, [identity.description, identity.title]);
 
   const searchResults = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -215,8 +215,8 @@ export default function Navbar() {
     () => languageList.find((language) => language.code === locale) || languageList[0],
     [locale]
   );
-  const displayTitle = siteTitle.trim() || " ";
-  const displayLogo = siteLogo.trim();
+  const displayTitle = identity.title.trim() || " ";
+  const displayLogo = identity.logo.trim();
 
   const navItems = useMemo(
     () => [
@@ -297,23 +297,10 @@ export default function Navbar() {
           }}
         >
           <div className="flex items-center gap-2.5">
-            {displayLogo ? (
-              <img src={displayLogo} alt={displayTitle} className="h-9 w-9 rounded-xl object-cover" />
-            ) : (
-              <div className="h-9 w-9 animate-pulse rounded-xl bg-[var(--surface-muted)]" />
-            )}
+            <img src={displayLogo} alt={displayTitle} className="h-9 w-9 rounded-xl object-cover" />
             <div className="hidden sm:block min-w-[120px]">
-              {identityLoaded ? (
-                <>
-                  <p className="text-sm font-semibold text-[var(--foreground)]">{displayTitle}</p>
-                  <p className="text-xs text-[var(--foreground-muted)]">{text.brandTagline}</p>
-                </>
-              ) : (
-                <div className="space-y-1.5">
-                  <div className="h-3.5 w-24 animate-pulse rounded bg-[var(--surface-muted)]" />
-                  <div className="h-3 w-16 animate-pulse rounded bg-[var(--surface-muted)]" />
-                </div>
-              )}
+              <p className="text-sm font-semibold text-[var(--foreground)]">{displayTitle}</p>
+              <p className="text-xs text-[var(--foreground-muted)]">{text.brandTagline}</p>
             </div>
           </div>
         </Link>

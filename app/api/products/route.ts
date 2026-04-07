@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { readCategoryHiddenMap } from "@/lib/category-hidden-store";
+import { siteConfig } from "@/config/site";
 
 // Use the admin client for server-side data fetching
 // The anon key format changed in newer Supabase CLI versions
@@ -22,6 +24,13 @@ function parsePriceValue(value: string | null | undefined): number {
 
 function formatRupiah(value: number): string {
   return `Rp${value.toLocaleString("id-ID")}`;
+}
+
+function normalizeKey(value: string | null | undefined): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
 }
 
 function isMissingTable(error: unknown): boolean {
@@ -68,6 +77,81 @@ function computeDiscountDayValues(
   };
 }
 
+type AdminRecord = {
+  key: string;
+  name: string;
+  image: string;
+  wa_number: string;
+  role?: string;
+  description?: string;
+  is_active?: boolean;
+  is_hidden?: boolean;
+};
+
+type PublicAdminInfo = {
+  name: string;
+  image: string;
+  number: string;
+  role: string;
+  description: string;
+};
+
+function toPublicAdminInfo(
+  admin: Partial<AdminRecord> | null | undefined,
+  fallbackName: string,
+  fallbackNumber = ""
+): PublicAdminInfo {
+  return {
+    name: String(admin?.name ?? fallbackName).trim() || fallbackName,
+    image: String(admin?.image ?? "").trim(),
+    number: String(admin?.wa_number ?? fallbackNumber).trim(),
+    role: String(admin?.role ?? "").trim(),
+    description: String(admin?.description ?? "").trim(),
+  };
+}
+
+function buildPublicAdminData(admins: AdminRecord[]): Record<string, PublicAdminInfo> {
+  const fallbackSlots = siteConfig.adminWhatsAppNumbers.map((item, index) => ({
+    key: item.key || `admin${index + 1}`,
+    label: item.label || `Admin ${index + 1}`,
+    number: item.number || "",
+  }));
+
+  const publicAdmins: Record<string, PublicAdminInfo> = {};
+  const usedAdminIndexes = new Set<number>();
+
+  for (const slot of fallbackSlots) {
+    const matchedIndex = admins.findIndex((admin) => normalizeKey(admin.key) === normalizeKey(slot.key));
+    if (matchedIndex >= 0) {
+      publicAdmins[slot.key] = toPublicAdminInfo(admins[matchedIndex], slot.label, slot.number);
+      usedAdminIndexes.add(matchedIndex);
+      continue;
+    }
+
+    const nextAvailableIndex = admins.findIndex((_, index) => !usedAdminIndexes.has(index));
+    if (nextAvailableIndex >= 0) {
+      publicAdmins[slot.key] = toPublicAdminInfo(admins[nextAvailableIndex], slot.label, slot.number);
+      usedAdminIndexes.add(nextAvailableIndex);
+      continue;
+    }
+
+    publicAdmins[slot.key] = toPublicAdminInfo(null, slot.label, slot.number);
+  }
+
+  admins.forEach((admin, index) => {
+    if (usedAdminIndexes.has(index)) return;
+
+    const fallbackLabel =
+      siteConfig.adminWhatsAppNumbers.find((item) => normalizeKey(item.key) === normalizeKey(admin.key))?.label ||
+      admin.name ||
+      admin.key;
+
+    publicAdmins[admin.key] = toPublicAdminInfo(admin, fallbackLabel, admin.wa_number);
+  });
+
+  return publicAdmins;
+}
+
 export async function GET() {
   try {
     // Fetch all visible games
@@ -106,11 +190,14 @@ export async function GET() {
       : null;
     const categoriesError = categoriesFallback ? categoriesFallback.error : categoriesWithHidden.error;
     if (categoriesError) throw categoriesError;
+    const [categoryHiddenMap] = await Promise.all([readCategoryHiddenMap()]);
     const categories = (categoriesFallback?.data ?? categoriesWithHidden.data ?? []) as Array<{
+      id: number;
       game_id: number;
       key: string;
       label: string;
       image: string;
+      is_hidden?: boolean;
       products: Array<{
         title: string;
         description: string;
@@ -131,16 +218,7 @@ export async function GET() {
       : null;
     const adminsError = adminsFallback ? adminsFallback.error : adminsWithHidden.error;
     if (adminsError) throw adminsError;
-    const admins = (adminsFallback?.data ?? adminsWithHidden.data ?? []) as Array<{
-      key: string;
-      name: string;
-      image: string;
-      wa_number: string;
-      role?: string;
-      description?: string;
-      is_active?: boolean;
-      is_hidden?: boolean;
-    }>;
+    const admins = (adminsFallback?.data ?? adminsWithHidden.data ?? []) as AdminRecord[];
 
     const discountSettingRows = await db
       .from("site_settings")
@@ -202,6 +280,7 @@ export async function GET() {
     }
 
     for (const cat of categories || []) {
+      if (cat.is_hidden || categoryHiddenMap[cat.id]) continue;
       const game = games?.find((g: { id: number; key: string }) => g.id === cat.game_id);
       if (!game) continue;
 
@@ -241,16 +320,7 @@ export async function GET() {
       };
     }
 
-    const adminData: Record<string, { name: string; image: string; number: string; role: string; description: string }> = {};
-    for (const admin of admins || []) {
-      adminData[admin.key] = {
-        name: admin.name,
-        image: admin.image,
-        number: admin.wa_number,
-        role: String(admin.role ?? "").trim(),
-        description: String(admin.description ?? "").trim(),
-      };
-    }
+    const adminData = buildPublicAdminData(admins || []);
 
     return NextResponse.json(
       {

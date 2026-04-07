@@ -182,6 +182,70 @@ export default function CaraOrderPage() {
     };
   }, []);
 
+  if (!copyLoaded) {
+    return (
+      <div className="min-h-screen text-[var(--foreground)]" style={{ backgroundColor: "var(--background)" }}>
+        <Navbar />
+
+        <section className="px-4 pb-14 pt-14 sm:px-6 sm:pb-16 sm:pt-16">
+          <div className="mx-auto max-w-4xl text-center">
+            <div className="mx-auto h-8 w-32 animate-pulse rounded-full bg-[var(--surface-muted)]" />
+            <div className="mx-auto mt-4 h-12 w-96 max-w-full animate-pulse rounded bg-[var(--surface-muted)]" />
+            <div className="mx-auto mt-4 h-5 w-[34rem] max-w-full animate-pulse rounded bg-[var(--surface-muted)]" />
+          </div>
+        </section>
+
+        <section className="px-4 pb-10 sm:px-6 sm:pb-12">
+          <div className="mx-auto mb-4 max-w-5xl text-center">
+            <div className="mx-auto h-4 w-24 animate-pulse rounded bg-[var(--surface-muted)]" />
+          </div>
+          <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-3">
+            {[0, 1, 2].map((item) => (
+              <div
+                key={item}
+                className="animate-pulse rounded-2xl border border-[var(--border)] p-4"
+                style={{ backgroundColor: "var(--surface-muted)" }}
+              >
+                <div className="h-5 w-5 rounded bg-[var(--surface)]" />
+                <div className="mt-2 h-4 w-28 rounded bg-[var(--surface)]" />
+                <div className="mt-2 h-3 w-full rounded bg-[var(--surface)]" />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="px-4 py-14 sm:px-6 sm:py-16" style={{ backgroundColor: "var(--surface-muted)" }}>
+          <div className="mx-auto max-w-5xl">
+            <div className="text-center">
+              <div className="mx-auto h-4 w-28 animate-pulse rounded bg-[var(--surface)]" />
+              <div className="mx-auto mt-3 h-10 w-56 animate-pulse rounded bg-[var(--surface)]" />
+            </div>
+            <div className="mt-10 space-y-4">
+              {[0, 1, 2, 3].map((item) => (
+                <div
+                  key={item}
+                  className="animate-pulse rounded-3xl border border-[var(--border)] p-5"
+                  style={{ backgroundColor: "var(--surface)" }}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-[var(--surface-muted)]" />
+                    <div className="flex-1">
+                      <div className="h-4 w-24 rounded bg-[var(--surface-muted)]" />
+                      <div className="mt-2 h-5 w-40 rounded bg-[var(--surface-muted)]" />
+                      <div className="mt-2 h-4 w-full rounded bg-[var(--surface-muted)]" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen text-[var(--foreground)]" style={{ backgroundColor: "var(--background)" }}>
       <Navbar />

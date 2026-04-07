@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Instagram } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { useLocale, type Locale } from "@/Components/LocaleProvider";
+import { useSiteIdentity } from "@/Components/SiteIdentityProvider";
 import WhatsAppIcon from "@/Components/WhatsAppIcon";
 
 function DiscordIcon({ className }: { className?: string }) {
@@ -92,21 +93,18 @@ type AdminContact = {
 
 export default function Footer() {
   const { locale } = useLocale();
+  const { identity, setIdentity } = useSiteIdentity();
   const text = copy[locale];
 
   const { name, copyright, socialLinks, operationalHours, adminWhatsAppNumbers } = siteConfig;
   const [admins, setAdmins] = useState<AdminContact[]>(adminWhatsAppNumbers);
-  const [siteTitle, setSiteTitle] = useState("");
-  const [siteLogo, setSiteLogo] = useState("");
-  const [siteDescription, setSiteDescription] = useState("");
-  const [identityLoaded, setIdentityLoaded] = useState(false);
   const mainAdmin = admins[0];
   const discordLink = (socialLinks as { discord?: string }).discord;
 
   useEffect(() => {
     const fetchAdminList = async () => {
       try {
-        const response = await fetch("/api/products");
+        const response = await fetch("/api/products", { cache: "no-store" });
         if (!response.ok) return;
         const data = await response.json();
         const publicSettings = (data?.siteSettings ?? {}) as {
@@ -119,9 +117,13 @@ export default function Footer() {
         const nextTitle = String(publicSettings.siteTitle ?? "").trim();
         const nextDescription = String(publicSettings.siteDescription ?? "").trim();
 
-        if (nextLogo) setSiteLogo(nextLogo);
-        if (nextTitle) setSiteTitle(nextTitle);
-        if (nextDescription) setSiteDescription(nextDescription);
+        if (nextLogo || nextTitle || nextDescription) {
+          setIdentity({
+            logo: nextLogo || identity.logo,
+            title: nextTitle || identity.title,
+            description: nextDescription || identity.description,
+          });
+        }
 
         const adminEntries = Object.entries(
           (data?.adminData ?? {}) as Record<string, { name?: string; number?: string }>
@@ -142,14 +144,11 @@ export default function Footer() {
         }
       } catch {
         // use fallback config
-        setSiteTitle(name);
-      } finally {
-        setIdentityLoaded(true);
       }
     };
 
     fetchAdminList();
-  }, [name]);
+  }, [identity.description, identity.logo, identity.title, name, setIdentity]);
 
   const footerSections = [
     {
@@ -171,9 +170,9 @@ export default function Footer() {
       ],
     },
   ];
-  const footerDescription = siteDescription || text.description;
-  const displayTitle = siteTitle.trim() || name;
-  const displayLogo = siteLogo.trim();
+  const footerDescription = identity.description.trim() || text.description;
+  const displayTitle = identity.title.trim() || name;
+  const displayLogo = identity.logo.trim();
 
   return (
     <footer className="border-t border-[var(--border)]" style={{ backgroundColor: "var(--surface)" }}>
@@ -181,16 +180,8 @@ export default function Footer() {
         <div className="grid gap-8 lg:grid-cols-4">
           <div className="space-y-5 lg:col-span-1">
             <Link href="/" className="inline-flex items-center gap-2.5">
-              {displayLogo ? (
-                <img src={displayLogo} alt={displayTitle} className="h-10 w-10 rounded-xl object-cover" />
-              ) : (
-                <div className="h-10 w-10 animate-pulse rounded-xl bg-[var(--surface-muted)]" />
-              )}
-              {identityLoaded ? (
-                <span className="text-base font-semibold text-[var(--foreground)]">{displayTitle}</span>
-              ) : (
-                <div className="h-4 w-28 animate-pulse rounded bg-[var(--surface-muted)]" />
-              )}
+              <img src={displayLogo} alt={displayTitle} className="h-10 w-10 rounded-xl object-cover" />
+              <span className="text-base font-semibold text-[var(--foreground)]">{displayTitle}</span>
             </Link>
             <p className="max-w-xs text-sm leading-relaxed text-[var(--foreground-muted)]">{footerDescription}</p>
 

@@ -265,6 +265,92 @@ export default function TentangPage() {
 
   const isReady = copyLoaded && adminsLoaded;
 
+  if (!isReady) {
+    return (
+      <div className="min-h-screen text-[var(--foreground)]" style={{ backgroundColor: "var(--background)" }}>
+        <Navbar />
+
+        <section className="px-4 pb-14 pt-14 sm:px-6 sm:pb-16 sm:pt-16">
+          <div className="mx-auto max-w-4xl text-center">
+            <div className="mx-auto h-8 w-28 animate-pulse rounded-full bg-[var(--surface-muted)]" />
+            <div className="mx-auto mt-4 h-12 w-96 max-w-full animate-pulse rounded bg-[var(--surface-muted)]" />
+            <div className="mx-auto mt-4 h-5 w-[34rem] max-w-full animate-pulse rounded bg-[var(--surface-muted)]" />
+          </div>
+        </section>
+
+        <section className="px-4 pb-10 sm:px-6 sm:pb-12">
+          <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-3">
+            {[0, 1, 2].map((item) => (
+              <div
+                key={item}
+                className="animate-pulse rounded-2xl border border-[var(--border)] p-5"
+                style={{ backgroundColor: "var(--surface-muted)" }}
+              >
+                <div className="mx-auto h-5 w-5 rounded bg-[var(--surface)]" />
+                <div className="mx-auto mt-2 h-7 w-20 rounded bg-[var(--surface)]" />
+                <div className="mx-auto mt-2 h-3 w-24 rounded bg-[var(--surface)]" />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="px-4 py-14 sm:px-6 sm:py-16" style={{ backgroundColor: "var(--surface-muted)" }}>
+          <div className="mx-auto max-w-5xl">
+            <div className="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
+              <div className="animate-pulse rounded-3xl border border-[var(--border)] p-7" style={{ backgroundColor: "var(--surface)" }}>
+                <div className="h-8 w-44 rounded bg-[var(--surface-muted)]" />
+                <div className="mt-4 h-4 w-full rounded bg-[var(--surface-muted)]" />
+                <div className="mt-3 h-4 w-11/12 rounded bg-[var(--surface-muted)]" />
+                <div className="mt-3 h-4 w-10/12 rounded bg-[var(--surface-muted)]" />
+              </div>
+              <div className="space-y-3">
+                {[0, 1, 2].map((item) => (
+                  <div
+                    key={item}
+                    className="animate-pulse rounded-2xl border border-[var(--border)] p-5"
+                    style={{ backgroundColor: "var(--surface)" }}
+                  >
+                    <div className="h-5 w-5 rounded bg-[var(--surface-muted)]" />
+                    <div className="mt-2 h-4 w-28 rounded bg-[var(--surface-muted)]" />
+                    <div className="mt-2 h-3 w-full rounded bg-[var(--surface-muted)]" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 py-14 sm:px-6 sm:py-16">
+          <div className="mx-auto max-w-4xl">
+            <div className="mx-auto h-10 w-48 animate-pulse rounded bg-[var(--surface-muted)]" />
+            <div className="mt-8 grid gap-4 sm:grid-cols-4 lg:grid-cols-6">
+              {[0, 1].map((item) => (
+                <article
+                  key={item}
+                  className="sm:col-span-2 lg:col-span-2 animate-pulse rounded-3xl border border-[var(--border)] p-6"
+                  style={{ backgroundColor: "var(--surface)" }}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="h-12 w-12 rounded-xl bg-[var(--surface-muted)]" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-5 w-28 rounded bg-[var(--surface-muted)]" />
+                      <div className="h-4 w-24 rounded bg-[var(--surface-muted)]" />
+                    </div>
+                  </div>
+                  <div className="mt-3 h-4 w-full rounded bg-[var(--surface-muted)]" />
+                  <div className="mt-2 h-4 w-10/12 rounded bg-[var(--surface-muted)]" />
+                  <div className="mt-4 h-10 w-32 rounded-xl bg-[var(--surface-muted)]" />
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen text-[var(--foreground)]" style={{ backgroundColor: "var(--background)" }}>
       <Navbar />

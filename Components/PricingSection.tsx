@@ -126,11 +126,6 @@ const genshinRequired = [
   { key: "quest", label: { id: "Quest", en: "Quest", my: "Quest" }, image: "/pricelist/story-quest.webp" },
   { key: "rawatakun", label: { id: "Rawat Akun", en: "Account Care", my: "Penjagaan Akaun" }, image: "/pricelist/buling.png" },
   { key: "benerinakun", label: { id: "Benerin Akun", en: "Fix Account", my: "Baiki Akaun" }, image: "/pricelist/buling.png" },
-  {
-    key: "aplikasipremium",
-    label: { id: "Aplikasi Premium", en: "Premium Apps", my: "Aplikasi Premium" },
-    image: "/pricelist/buling.png",
-  },
 ] as const;
 
 const FALLBACK_IMAGES = {

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X } from "lucide-react";
+import { ExternalLink, MessageCircle, X } from "lucide-react";
 import { useLocale, type Locale } from "@/Components/LocaleProvider";
 
 type TestimonialItem = {
@@ -12,7 +12,18 @@ type TestimonialItem = {
   caption: string;
 };
 
+type TestimonialChannel = {
+  key: string;
+  label: string;
+  url: string;
+};
+
 const PAGE_SIZE = 12;
+const DEFAULT_CHANNELS: TestimonialChannel[] = [
+  { key: "channel1", label: "Saluran 1", url: "" },
+  { key: "channel2", label: "Saluran 2", url: "" },
+  { key: "channel3", label: "Saluran 3", url: "" },
+];
 
 const copy: Record<
   Locale,
@@ -24,6 +35,11 @@ const copy: Record<
     collapse: string;
     showing: string;
     viewAll: string;
+    chooseChannel: string;
+    chooseChannelDesc: string;
+    unavailable: string;
+    close: string;
+    openChannel: string;
   }
 > = {
   id: {
@@ -34,6 +50,11 @@ const copy: Record<
     collapse: "Tampilkan Lebih Sedikit",
     showing: "Menampilkan",
     viewAll: "Lihat Semua Testimoni",
+    chooseChannel: "Pilih Saluran Testimoni",
+    chooseChannelDesc: "Pilih salah satu saluran untuk melihat lebih banyak bukti order customer.",
+    unavailable: "Belum diisi di dashboard",
+    close: "Tutup",
+    openChannel: "Buka Saluran",
   },
   en: {
     label: "Testimonials",
@@ -43,6 +64,11 @@ const copy: Record<
     collapse: "Show Less",
     showing: "Showing",
     viewAll: "View All Testimonials",
+    chooseChannel: "Choose Testimonial Channel",
+    chooseChannelDesc: "Pick one channel to see more real customer proof.",
+    unavailable: "Not set yet in dashboard",
+    close: "Close",
+    openChannel: "Open Channel",
   },
   my: {
     label: "Testimoni",
@@ -52,6 +78,11 @@ const copy: Record<
     collapse: "Paparkan Kurang",
     showing: "Memaparkan",
     viewAll: "Lihat Semua Testimoni",
+    chooseChannel: "Pilih Saluran Testimoni",
+    chooseChannelDesc: "Pilih salah satu saluran untuk melihat lebih banyak bukti pesanan pelanggan.",
+    unavailable: "Belum diisi di dashboard",
+    close: "Tutup",
+    openChannel: "Buka Saluran",
   },
 };
 
@@ -74,12 +105,13 @@ export default function TestimonialsImageGrid() {
   const [items, setItems] = useState<TestimonialItem[]>([]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [activeItem, setActiveItem] = useState<TestimonialItem | null>(null);
-  const [channelUrl, setChannelUrl] = useState<string>("");
+  const [channels, setChannels] = useState<TestimonialChannel[]>(DEFAULT_CHANNELS);
+  const [showChannelPicker, setShowChannelPicker] = useState(false);
 
   useEffect(() => {
     const fetchTestimonials = async () => {
       try {
-        const response = await fetch("/api/testimonials");
+        const response = await fetch("/api/testimonials", { cache: "no-store" });
         if (!response.ok) {
           setItems([]);
           return;
@@ -91,9 +123,28 @@ export default function TestimonialsImageGrid() {
           : Array.isArray(payload?.items)
             ? payload.items
             : [];
+        const incomingChannels = Array.isArray(payload?.channels)
+          ? payload.channels
+              .map((item: { key?: string; label?: string; url?: string }, index: number) => ({
+                key: String(item?.key ?? `channel${index + 1}`).trim() || `channel${index + 1}`,
+                label: String(item?.label ?? `Saluran ${index + 1}`).trim() || `Saluran ${index + 1}`,
+                url: String(item?.url ?? "").trim(),
+              }))
+              .slice(0, 3)
+          : [];
+        const legacyChannelUrl = String(payload?.channelUrl ?? "").trim();
+        const nextChannels =
+          incomingChannels.length > 0
+            ? DEFAULT_CHANNELS.map((slot, index) => ({
+                ...slot,
+                ...incomingChannels[index],
+                label: incomingChannels[index]?.label || slot.label,
+              }))
+            : DEFAULT_CHANNELS.map((slot, index) =>
+                index === 0 ? { ...slot, url: legacyChannelUrl } : slot
+              );
+        setChannels(nextChannels);
 
-        const channel = String(payload?.channelUrl ?? "").trim();
-        if (channel) setChannelUrl(channel);
         if (data.length === 0) {
           setItems([]);
           return;
@@ -128,9 +179,19 @@ export default function TestimonialsImageGrid() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeItem]);
 
+  useEffect(() => {
+    if (!showChannelPicker) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowChannelPicker(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showChannelPicker]);
+
   const shownItems = useMemo(() => items.slice(0, visibleCount), [items, visibleCount]);
   const hasMore = visibleCount < items.length;
   const galleryLayoutClass = useMemo(() => getGalleryLayoutClass(shownItems.length), [shownItems.length]);
+  const hasAnyChannel = useMemo(() => channels.some((item) => item.url), [channels]);
 
   return (
     <section id="testimonials" className="px-4 py-16 sm:px-6 sm:py-20" style={{ backgroundColor: "var(--surface)" }}>
@@ -179,7 +240,7 @@ export default function TestimonialsImageGrid() {
           ))}
         </div>
 
-        {items.length > PAGE_SIZE || channelUrl ? (
+        {items.length > PAGE_SIZE || hasAnyChannel ? (
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             {hasMore ? (
               <button
@@ -201,21 +262,94 @@ export default function TestimonialsImageGrid() {
               ) : null
             )}
 
-            {channelUrl ? (
-              <a
-                href={channelUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+            {hasAnyChannel ? (
+              <button
+                type="button"
+                onClick={() => setShowChannelPicker(true)}
                 className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-muted)]"
               >
                 {text.viewAll}
-              </a>
+              </button>
             ) : null}
           </div>
         ) : null}
       </div>
 
       <AnimatePresence>
+        {showChannelPicker ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-[75] flex items-end justify-center bg-[rgba(15,23,42,0.55)] p-0 sm:items-center sm:p-4"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setShowChannelPicker(false);
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 24 }}
+              transition={{ duration: 0.2 }}
+              className="w-full overflow-hidden rounded-t-3xl border border-[var(--border)] shadow-[var(--shadow-soft)] sm:max-w-xl sm:rounded-3xl"
+              style={{ backgroundColor: "var(--surface)" }}
+            >
+              <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-[var(--brand-soft)] p-2">
+                    <MessageCircle className="h-5 w-5 text-[var(--brand)]" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--foreground)]">{text.chooseChannel}</p>
+                    <p className="text-xs text-[var(--foreground-muted)]">{text.chooseChannelDesc}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowChannelPicker(false)}
+                  className="rounded-lg border border-[var(--border)] p-1.5 text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                  aria-label={text.close}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="grid gap-3 px-5 py-5 sm:grid-cols-3">
+                {channels.map((channel) => {
+                  const isReady = Boolean(channel.url);
+                  return isReady ? (
+                    <a
+                      key={channel.key}
+                      href={channel.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-2xl border border-[var(--border)] p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand)] hover:bg-[var(--surface-muted)]"
+                      style={{ backgroundColor: "var(--surface)" }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-[var(--foreground)]">{channel.label}</p>
+                        <ExternalLink className="h-4 w-4 text-[var(--brand)]" />
+                      </div>
+                      <p className="mt-2 text-xs text-[var(--foreground-muted)] line-clamp-2 break-all">{channel.url}</p>
+                      <p className="mt-3 text-xs font-semibold text-[var(--brand)]">{text.openChannel}</p>
+                    </a>
+                  ) : (
+                    <div
+                      key={channel.key}
+                      className="rounded-2xl border border-dashed border-[var(--border)] p-4 opacity-70"
+                      style={{ backgroundColor: "var(--surface-muted)" }}
+                    >
+                      <p className="text-sm font-semibold text-[var(--foreground)]">{channel.label}</p>
+                      <p className="mt-2 text-xs text-[var(--foreground-muted)]">{text.unavailable}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+
         {activeItem ? (
           <motion.div
             initial={{ opacity: 0 }}

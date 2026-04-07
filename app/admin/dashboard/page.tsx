@@ -9,6 +9,7 @@ import {
   type AppLocale,
   type ContentSlug,
 } from "@/lib/site-content-defaults";
+import { pushSiteIdentityUpdate } from "@/Components/SiteIdentityProvider";
 import { useTheme } from "@/Components/ThemeProvider";
 
 // ---- Types ----
@@ -1767,15 +1768,29 @@ function SettingsTab({ settings, onRefresh }: { settings: Record<string, string>
   const [siteLogo, setSiteLogo] = useState(settings.site_logo ?? "");
   const [siteTitle, setSiteTitle] = useState(settings.site_title ?? "");
   const [siteDescription, setSiteDescription] = useState(settings.site_description ?? "");
-  const [testimonialChannelUrl, setTestimonialChannelUrl] = useState(settings.testimonial_channel_url ?? "");
+  const [testimonialChannel1Url, setTestimonialChannel1Url] = useState(
+    settings.testimonial_channel_1_url ?? settings.testimonial_channel_url ?? ""
+  );
+  const [testimonialChannel2Url, setTestimonialChannel2Url] = useState(settings.testimonial_channel_2_url ?? "");
+  const [testimonialChannel3Url, setTestimonialChannel3Url] = useState(settings.testimonial_channel_3_url ?? "");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setSiteLogo(settings.site_logo ?? "");
     setSiteTitle(settings.site_title ?? "");
     setSiteDescription(settings.site_description ?? "");
-    setTestimonialChannelUrl(settings.testimonial_channel_url ?? "");
-  }, [settings.site_logo, settings.site_title, settings.site_description, settings.testimonial_channel_url]);
+    setTestimonialChannel1Url(settings.testimonial_channel_1_url ?? settings.testimonial_channel_url ?? "");
+    setTestimonialChannel2Url(settings.testimonial_channel_2_url ?? "");
+    setTestimonialChannel3Url(settings.testimonial_channel_3_url ?? "");
+  }, [
+    settings.site_logo,
+    settings.site_title,
+    settings.site_description,
+    settings.testimonial_channel_url,
+    settings.testimonial_channel_1_url,
+    settings.testimonial_channel_2_url,
+    settings.testimonial_channel_3_url,
+  ]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -1792,16 +1807,24 @@ function SettingsTab({ settings, onRefresh }: { settings: Record<string, string>
         }
       };
 
-      await Promise.all([
-        saveSetting("site_logo", siteLogo),
-        saveSetting("site_title", siteTitle),
-        saveSetting("site_description", siteDescription),
-        saveSetting("testimonial_channel_url", testimonialChannelUrl),
-      ]);
-      onRefresh();
-    } catch (error) {
-      alert(error instanceof Error ? error.message : "Gagal menyimpan pengaturan.");
-    } finally {
+        await Promise.all([
+          saveSetting("site_logo", siteLogo),
+          saveSetting("site_title", siteTitle),
+          saveSetting("site_description", siteDescription),
+          saveSetting("testimonial_channel_url", testimonialChannel1Url),
+          saveSetting("testimonial_channel_1_url", testimonialChannel1Url),
+          saveSetting("testimonial_channel_2_url", testimonialChannel2Url),
+          saveSetting("testimonial_channel_3_url", testimonialChannel3Url),
+        ]);
+        pushSiteIdentityUpdate({
+          logo: siteLogo,
+          title: siteTitle,
+          description: siteDescription,
+        });
+        onRefresh();
+      } catch (error) {
+        alert(error instanceof Error ? error.message : "Gagal menyimpan pengaturan.");
+      } finally {
       setSaving(false);
     }
   };
@@ -1831,16 +1854,34 @@ function SettingsTab({ settings, onRefresh }: { settings: Record<string, string>
           />
         </div>
         <div>
-          <Label>Link Saluran WhatsApp Testimoni</Label>
+          <Label>Link Saluran Testimoni 1</Label>
           <input
             className={inputCls}
-            value={testimonialChannelUrl}
-            onChange={(e) => setTestimonialChannelUrl(e.target.value)}
+            value={testimonialChannel1Url}
+            onChange={(e) => setTestimonialChannel1Url(e.target.value)}
             placeholder="https://whatsapp.com/channel/..."
           />
           <p className="mt-1 text-xs text-[var(--foreground-muted)]">
-            Tombol &quot;Lihat Semua Testimoni&quot; akan mengarah ke link ini.
+            Tombol &quot;Lihat Semua Testimoni&quot; akan membuka popup pilihan saluran ini.
           </p>
+        </div>
+        <div>
+          <Label>Link Saluran Testimoni 2</Label>
+          <input
+            className={inputCls}
+            value={testimonialChannel2Url}
+            onChange={(e) => setTestimonialChannel2Url(e.target.value)}
+            placeholder="https://whatsapp.com/channel/..."
+          />
+        </div>
+        <div>
+          <Label>Link Saluran Testimoni 3</Label>
+          <input
+            className={inputCls}
+            value={testimonialChannel3Url}
+            onChange={(e) => setTestimonialChannel3Url(e.target.value)}
+            placeholder="https://whatsapp.com/channel/..."
+          />
         </div>
         <button
           onClick={handleSave}
