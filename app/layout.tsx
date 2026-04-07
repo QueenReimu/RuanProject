@@ -43,6 +43,9 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     metadataBase: new URL(origin),
+    alternates: {
+      canonical: origin,
+    },
     title: identity.title,
     description: identity.description,
     generator: "Ruan Joki Games",

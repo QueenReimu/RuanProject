@@ -13,11 +13,18 @@ function hashSha256(value: string): string {
 function sanitizePath(pathValue: unknown): string {
   const raw = typeof pathValue === "string" ? pathValue.trim() : "/";
   if (!raw.startsWith("/")) return "/";
-  return raw.length > 250 ? raw.slice(0, 250) : raw;
+  const collapsed = raw.replace(/\/{2,}/g, "/");
+  const normalized = collapsed !== "/" ? collapsed.replace(/\/+$/g, "") : collapsed;
+  const safePath = normalized || "/";
+  return safePath.length > 250 ? safePath.slice(0, 250) : safePath;
 }
 
 function isBotTraffic(userAgent: string): boolean {
-  return /bot|crawler|spider|slurp|preview|facebookexternalhit|whatsapp/i.test(userAgent);
+  const agent = userAgent.toLowerCase();
+  return (
+    /bot|crawler|spider|slurp|facebookexternalhit/.test(agent) ||
+    agent.includes("whatsapppreview")
+  );
 }
 
 function isMissingTable(error: unknown): boolean {

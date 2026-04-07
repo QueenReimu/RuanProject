@@ -131,13 +131,11 @@ export default function Navbar() {
         const nextTitle = String(publicSettings.siteTitle ?? "").trim();
         const nextDescription = String(publicSettings.siteDescription ?? "").trim();
 
-        if (nextLogo || nextTitle || nextDescription) {
-          setIdentity({
-            logo: nextLogo || identity.logo,
-            title: nextTitle || identity.title,
-            description: nextDescription || identity.description,
-          });
-        }
+        setIdentity({
+          logo: nextLogo,
+          title: nextTitle,
+          description: nextDescription,
+        });
 
         const results: SearchResult[] = [];
 
@@ -165,7 +163,7 @@ export default function Navbar() {
     };
 
     fetchProducts();
-  }, [identity.description, identity.logo, identity.title, setIdentity]);
+  }, [setIdentity]);
 
   useEffect(() => {
     const title = identity.title.trim();

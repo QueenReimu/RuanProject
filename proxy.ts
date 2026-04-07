@@ -3,9 +3,24 @@ import type { NextRequest } from "next/server";
 
 const ADMIN_SESSION_COOKIE = "admin_session";
 
+function normalizePathname(pathname: string): string {
+  const collapsed = pathname.replace(/\/{2,}/g, "/");
+  if (collapsed !== "/" && collapsed.endsWith("/")) {
+    return collapsed.replace(/\/+$/g, "");
+  }
+  return collapsed || "/";
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const normalizedPathname = normalizePathname(pathname);
   const hasSessionCookie = Boolean(request.cookies.get(ADMIN_SESSION_COOKIE)?.value);
+
+  if (normalizedPathname !== pathname) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = normalizedPathname;
+    return NextResponse.redirect(redirectUrl, { status: 308 });
+  }
 
   const needsAdminCookie =
     pathname.startsWith("/admin/dashboard") || (pathname.startsWith("/api/admin/") && !pathname.startsWith("/api/admin/auth"));
@@ -28,5 +43,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*"],
+  matcher: ["/((?!_next|.*\\..*).*)"],
 };

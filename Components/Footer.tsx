@@ -117,13 +117,11 @@ export default function Footer() {
         const nextTitle = String(publicSettings.siteTitle ?? "").trim();
         const nextDescription = String(publicSettings.siteDescription ?? "").trim();
 
-        if (nextLogo || nextTitle || nextDescription) {
-          setIdentity({
-            logo: nextLogo || identity.logo,
-            title: nextTitle || identity.title,
-            description: nextDescription || identity.description,
-          });
-        }
+        setIdentity({
+          logo: nextLogo,
+          title: nextTitle,
+          description: nextDescription,
+        });
 
         const adminEntries = Object.entries(
           (data?.adminData ?? {}) as Record<string, { name?: string; number?: string }>
@@ -148,7 +146,7 @@ export default function Footer() {
     };
 
     fetchAdminList();
-  }, [identity.description, identity.logo, identity.title, name, setIdentity]);
+  }, [setIdentity]);
 
   const footerSections = [
     {
