@@ -2,6 +2,25 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifyAdminSession } from "@/lib/auth";
 
+function isMissingColumn(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const maybeCode = "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+  return maybeCode === "42703" || maybeCode === "PGRST204";
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const maybeCode = "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+  return maybeCode === "23505";
+}
+
+function normalizeKey(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+}
+
 export async function GET(request: Request) {
   try {
     const isAdmin = await verifyAdminSession(request);
@@ -27,7 +46,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const gameId = Number(body?.game_id ?? 0);
-    const key = String(body?.key ?? "").trim();
+    const key = normalizeKey(body?.key);
     const label = String(body?.label ?? "").trim();
 
     if (!gameId || !key || !label) {
@@ -43,15 +62,35 @@ export async function POST(request: Request) {
       is_hidden: Boolean(body?.is_hidden ?? false),
     };
 
-    const { data, error } = await supabaseAdmin!
+    let result = await supabaseAdmin!
       .from("categories")
       .insert(payload)
       .select()
       .single();
 
-    if (error) throw error;
-    return NextResponse.json(data, { status: 201 });
-  } catch {
+    if (result.error && isMissingColumn(result.error)) {
+      const legacyPayload = { ...payload };
+      delete (legacyPayload as Record<string, unknown>).is_hidden;
+      result = await supabaseAdmin!
+        .from("categories")
+        .insert(legacyPayload)
+        .select()
+        .single();
+    }
+
+    if (result.error) {
+      if (isUniqueViolation(result.error)) {
+        return NextResponse.json(
+          { error: "Kategori dengan key ini sudah ada untuk game yang dipilih." },
+          { status: 409 }
+        );
+      }
+      throw result.error;
+    }
+
+    return NextResponse.json(result.data, { status: 201 });
+  } catch (error) {
+    console.error("Admin categories POST error:", error);
     return NextResponse.json({ error: "Failed to create category" }, { status: 500 });
   }
 }

@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import Autoplay from "embla-carousel-autoplay";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 type CarouselImage = {
@@ -37,16 +36,7 @@ export default function HeroSection() {
   const [loaded, setLoaded] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [activeImage, setActiveImage] = useState<CarouselImage | null>(null);
-
-  const autoplayRef = useRef(
-    Autoplay({
-      delay: 4600,
-      stopOnInteraction: false,
-      stopOnMouseEnter: true,
-    })
-  );
-
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: "start" }, [autoplayRef.current]);
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: "start" });
 
   useEffect(() => {
     const fetchImages = async () => {

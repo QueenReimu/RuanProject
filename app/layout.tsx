@@ -7,6 +7,8 @@ import { siteConfig } from "@/config/site";
 import { supabaseAdmin } from "@/lib/supabase";
 
 const DEFAULT_ICON = "/4V2.png";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function isMissingTable(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
@@ -52,21 +54,68 @@ async function readSiteIdentity() {
   }
 }
 
+function resolveSiteOrigin() {
+  const raw =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.SITE_URL ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+    process.env.VERCEL_URL ||
+    "http://localhost:3000";
+
+  const withProtocol = raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
+
+  try {
+    return new URL(withProtocol).origin;
+  } catch {
+    return "http://localhost:3000";
+  }
+}
+
+function resolveAssetUrl(assetPath: string, origin: string) {
+  const normalized = String(assetPath ?? "").trim();
+  if (!normalized) return "";
+
+  try {
+    return new URL(normalized, origin).toString();
+  } catch {
+    return "";
+  }
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const identity = await readSiteIdentity();
+  const origin = resolveSiteOrigin();
+  const absoluteLogo = resolveAssetUrl(identity.logo, origin);
 
   return {
+    metadataBase: new URL(origin),
     title: identity.title,
     description: identity.description,
     generator: "Ruan Joki Games",
     icons: {
-      icon: identity.logo,
-      apple: identity.logo,
+      icon: absoluteLogo || identity.logo,
+      apple: absoluteLogo || identity.logo,
     },
     openGraph: {
       title: identity.title,
       description: identity.description,
       type: "website",
+      url: origin,
+      siteName: identity.title,
+      images: absoluteLogo
+        ? [
+            {
+              url: absoluteLogo,
+              alt: identity.title,
+            },
+          ]
+        : undefined,
+    },
+    twitter: {
+      card: absoluteLogo ? "summary_large_image" : "summary",
+      title: identity.title,
+      description: identity.description,
+      images: absoluteLogo ? [absoluteLogo] : undefined,
     },
   };
 }

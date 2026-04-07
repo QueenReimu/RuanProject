@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { getTestimonials } from "@/lib/testimonials-store";
 import { supabaseAdmin } from "@/lib/supabase";
 import { siteConfig } from "@/config/site";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+  Pragma: "no-cache",
+  Expires: "0",
+};
 
 type SettingRow = {
   value: string | null;
@@ -51,10 +58,13 @@ export async function GET() {
         display_order: item.display_order,
       }));
 
-    return NextResponse.json({
-      items,
-      channelUrl,
-    });
+    return NextResponse.json(
+      {
+        items,
+        channelUrl,
+      },
+      { headers: NO_STORE_HEADERS }
+    );
   } catch (error) {
     console.error("Public testimonials GET error:", error);
     return NextResponse.json({ error: "Failed to fetch testimonials" }, { status: 500 });

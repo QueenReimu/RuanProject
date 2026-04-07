@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { siteConfig } from "@/config/site";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+  Pragma: "no-cache",
+  Expires: "0",
+};
 
 type AdminRow = {
   id?: number;
@@ -37,7 +44,7 @@ function mapFallbackFromConfig() {
 export async function GET() {
   try {
     if (!supabaseAdmin) {
-      return NextResponse.json(mapFallbackFromConfig());
+      return NextResponse.json(mapFallbackFromConfig(), { headers: NO_STORE_HEADERS });
     }
 
     const adminsWithHidden = await supabaseAdmin
@@ -75,13 +82,12 @@ export async function GET() {
       .filter((item) => item.key && item.name && item.wa_number);
 
     if (payload.length === 0) {
-      return NextResponse.json(mapFallbackFromConfig());
+      return NextResponse.json(mapFallbackFromConfig(), { headers: NO_STORE_HEADERS });
     }
 
-    return NextResponse.json(payload);
+    return NextResponse.json(payload, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.error("Public admins GET error:", error);
-    return NextResponse.json(mapFallbackFromConfig());
+    return NextResponse.json(mapFallbackFromConfig(), { headers: NO_STORE_HEADERS });
   }
 }
-

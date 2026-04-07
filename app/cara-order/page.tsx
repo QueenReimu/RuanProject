@@ -152,6 +152,7 @@ function mergeCopy(
 export default function CaraOrderPage() {
   const { locale } = useLocale();
   const [copyState, setCopyState] = useState(copy);
+  const [copyLoaded, setCopyLoaded] = useState(false);
   const text = copyState[locale];
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
@@ -168,6 +169,10 @@ export default function CaraOrderPage() {
         }
       } catch (error) {
         console.error("Failed to load cara-order copy:", error);
+      } finally {
+        if (isMounted) {
+          setCopyLoaded(true);
+        }
       }
     };
 
@@ -195,7 +200,22 @@ export default function CaraOrderPage() {
         <div className="mx-auto mb-4 max-w-5xl text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand)]">{text.guaranteeLabel}</p>
         </div>
-        <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-3">
+        {!copyLoaded ? (
+          <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-3">
+            {[0, 1, 2].map((item) => (
+              <div
+                key={item}
+                className="animate-pulse rounded-2xl border border-[var(--border)] p-4"
+                style={{ backgroundColor: "var(--surface-muted)" }}
+              >
+                <div className="h-5 w-5 rounded bg-[var(--surface)]" />
+                <div className="mt-2 h-4 w-28 rounded bg-[var(--surface)]" />
+                <div className="mt-2 h-3 w-full rounded bg-[var(--surface)]" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-3">
           {text.guarantees.map((item, index) => {
             const Icon = guaranteeIcons[index] || Shield;
             return (
@@ -208,9 +228,10 @@ export default function CaraOrderPage() {
                 <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">{item.title}</p>
                 <p className="mt-1 text-xs leading-relaxed text-[var(--foreground-muted)]">{item.description}</p>
               </div>
-            );
+              );
           })}
-        </div>
+          </div>
+        )}
       </section>
 
       <section className="px-4 py-14 sm:px-6 sm:py-16" style={{ backgroundColor: "var(--surface-muted)" }}>

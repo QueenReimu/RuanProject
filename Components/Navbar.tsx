@@ -100,9 +100,10 @@ export default function Navbar() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [allProducts, setAllProducts] = useState<SearchResult[]>([]);
-  const [siteLogo, setSiteLogo] = useState("/4V2.png");
-  const [siteTitle, setSiteTitle] = useState("Ruan Joki");
+  const [siteLogo, setSiteLogo] = useState("");
+  const [siteTitle, setSiteTitle] = useState("");
   const [siteDescription, setSiteDescription] = useState("");
+  const [identityLoaded, setIdentityLoaded] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -158,6 +159,8 @@ export default function Navbar() {
         setAllProducts(results);
       } catch {
         setAllProducts([]);
+      } finally {
+        setIdentityLoaded(true);
       }
     };
 
@@ -212,6 +215,8 @@ export default function Navbar() {
     () => languageList.find((language) => language.code === locale) || languageList[0],
     [locale]
   );
+  const displayTitle = siteTitle.trim() || " ";
+  const displayLogo = siteLogo.trim();
 
   const navItems = useMemo(
     () => [
@@ -292,10 +297,23 @@ export default function Navbar() {
           }}
         >
           <div className="flex items-center gap-2.5">
-            <img src={siteLogo} alt={siteTitle} className="h-9 w-9 rounded-xl object-cover" />
-            <div className="hidden sm:block">
-              <p className="text-sm font-semibold text-[var(--foreground)]">{siteTitle}</p>
-              <p className="text-xs text-[var(--foreground-muted)]">{text.brandTagline}</p>
+            {displayLogo ? (
+              <img src={displayLogo} alt={displayTitle} className="h-9 w-9 rounded-xl object-cover" />
+            ) : (
+              <div className="h-9 w-9 animate-pulse rounded-xl bg-[var(--surface-muted)]" />
+            )}
+            <div className="hidden sm:block min-w-[120px]">
+              {identityLoaded ? (
+                <>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">{displayTitle}</p>
+                  <p className="text-xs text-[var(--foreground-muted)]">{text.brandTagline}</p>
+                </>
+              ) : (
+                <div className="space-y-1.5">
+                  <div className="h-3.5 w-24 animate-pulse rounded bg-[var(--surface-muted)]" />
+                  <div className="h-3 w-16 animate-pulse rounded bg-[var(--surface-muted)]" />
+                </div>
+              )}
             </div>
           </div>
         </Link>

@@ -173,6 +173,7 @@ function mergeCopy(
 export default function TentangPage() {
   const { locale } = useLocale();
   const [copyState, setCopyState] = useState(copy);
+  const [copyLoaded, setCopyLoaded] = useState(false);
   const text = copyState[locale];
   const fallbackTeamAdmins = useMemo<TeamAdmin[]>(
     () =>
@@ -188,7 +189,8 @@ export default function TentangPage() {
       })),
     [text.team]
   );
-  const [teamAdmins, setTeamAdmins] = useState<TeamAdmin[]>(fallbackTeamAdmins);
+  const [teamAdmins, setTeamAdmins] = useState<TeamAdmin[]>([]);
+  const [adminsLoaded, setAdminsLoaded] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -203,6 +205,10 @@ export default function TentangPage() {
         }
       } catch (error) {
         console.error("Failed to load tentang copy:", error);
+      } finally {
+        if (isMounted) {
+          setCopyLoaded(true);
+        }
       }
     };
 
@@ -243,6 +249,10 @@ export default function TentangPage() {
         if (isMounted) {
           setTeamAdmins(fallbackTeamAdmins);
         }
+      } finally {
+        if (isMounted) {
+          setAdminsLoaded(true);
+        }
       }
     };
 
@@ -252,6 +262,8 @@ export default function TentangPage() {
       isMounted = false;
     };
   }, [fallbackTeamAdmins]);
+
+  const isReady = copyLoaded && adminsLoaded;
 
   return (
     <div className="min-h-screen text-[var(--foreground)]" style={{ backgroundColor: "var(--background)" }}>
@@ -268,7 +280,22 @@ export default function TentangPage() {
       </section>
 
       <section className="px-4 pb-10 sm:px-6 sm:pb-12">
-        <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-3">
+        {!isReady ? (
+          <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-3">
+            {[0, 1, 2].map((item) => (
+              <div
+                key={item}
+                className="animate-pulse rounded-2xl border border-[var(--border)] p-5"
+                style={{ backgroundColor: "var(--surface-muted)" }}
+              >
+                <div className="mx-auto h-5 w-5 rounded bg-[var(--surface)]" />
+                <div className="mx-auto mt-2 h-7 w-20 rounded bg-[var(--surface)]" />
+                <div className="mx-auto mt-2 h-3 w-24 rounded bg-[var(--surface)]" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-3">
           {text.milestones.map((item, index) => {
             const Icon = milestoneIcons[index] || TrendingUp;
             return (
@@ -283,7 +310,8 @@ export default function TentangPage() {
               </div>
             );
           })}
-        </div>
+          </div>
+        )}
       </section>
 
       <section className="px-4 py-14 sm:px-6 sm:py-16" style={{ backgroundColor: "var(--surface-muted)" }}>
@@ -332,7 +360,29 @@ export default function TentangPage() {
       <section className="px-4 py-14 sm:px-6 sm:py-16">
         <div className="mx-auto max-w-4xl">
           <h2 className="text-center text-3xl font-semibold text-[var(--foreground)] sm:text-4xl">{text.teamTitle}</h2>
-          <div className="mt-8 grid gap-4 sm:grid-cols-4 lg:grid-cols-6">
+          {!isReady ? (
+            <div className="mt-8 grid gap-4 sm:grid-cols-4 lg:grid-cols-6">
+              {[0, 1].map((item) => (
+                <article
+                  key={item}
+                  className="sm:col-span-2 lg:col-span-2 animate-pulse rounded-3xl border border-[var(--border)] p-6"
+                  style={{ backgroundColor: "var(--surface)" }}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="h-12 w-12 rounded-xl bg-[var(--surface-muted)]" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-5 w-28 rounded bg-[var(--surface-muted)]" />
+                      <div className="h-4 w-24 rounded bg-[var(--surface-muted)]" />
+                    </div>
+                  </div>
+                  <div className="mt-3 h-4 w-full rounded bg-[var(--surface-muted)]" />
+                  <div className="mt-2 h-4 w-10/12 rounded bg-[var(--surface-muted)]" />
+                  <div className="mt-4 h-10 w-32 rounded-xl bg-[var(--surface-muted)]" />
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-8 grid gap-4 sm:grid-cols-4 lg:grid-cols-6">
             {teamAdmins.map((admin, index) => (
               <article
                 key={admin.key}
@@ -367,7 +417,8 @@ export default function TentangPage() {
                 </a>
               </article>
             ))}
-          </div>
+            </div>
+          )}
         </div>
       </section>
 

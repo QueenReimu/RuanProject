@@ -888,6 +888,12 @@ function CategoriesTab({ categories, games, onRefresh }: { categories: Category[
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
+  const openAdd = () => {
+    setForm({ game_id: games[0]?.id ?? 1, key: "", label: "", image: "", display_order: 0, is_hidden: false });
+    setEditingId(null);
+    setShowForm(true);
+  };
+
   const openEdit = (c: Category) => {
     setForm({ game_id: c.game_id, key: c.key, label: c.label, image: c.image, display_order: c.display_order, is_hidden: c.is_hidden });
     setEditingId(c.id);
@@ -899,31 +905,51 @@ function CategoriesTab({ categories, games, onRefresh }: { categories: Category[
     try {
       const url = editingId ? `/api/admin/categories/${editingId}` : "/api/admin/categories";
       const method = editingId ? "PUT" : "POST";
-      await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(String(payload?.error ?? "Gagal menyimpan kategori."));
+      }
       setShowForm(false);
       onRefresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Gagal menyimpan kategori.");
     } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Hapus kategori ini beserta semua produknya?")) return;
-    await fetch(`/api/admin/categories/${id}`, { method: "DELETE" });
+    const response = await fetch(`/api/admin/categories/${id}`, { method: "DELETE" });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      alert(String(payload?.error ?? "Gagal menghapus kategori."));
+      return;
+    }
     onRefresh();
   };
 
   const handleToggleHidden = async (id: number, currentStatus: boolean) => {
-    await fetch(`/api/admin/categories/${id}`, {
+    const response = await fetch(`/api/admin/categories/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ is_hidden: !currentStatus }),
     });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      alert(String(payload?.error ?? "Gagal mengubah status kategori."));
+      return;
+    }
     onRefresh();
   };
 
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <button onClick={() => { setForm(emptyForm); setEditingId(null); setShowForm(true); }}
+        <button onClick={openAdd}
           className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-medium px-4 py-2 rounded-xl transition-all">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -939,9 +965,9 @@ function CategoriesTab({ categories, games, onRefresh }: { categories: Category[
               <select value={form.game_id} onChange={e => setForm({ ...form, game_id: Number(e.target.value) })} className={inputCls}>
                 {games.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
               </select>
-            </div>
-            <div><Label>Key (slug)</Label>
-              <input className={inputCls} value={form.key} placeholder="astrite" onChange={e => setForm({ ...form, key: e.target.value })} /></div>
+              </div>
+              <div><Label>Key (slug)</Label>
+                <input className={inputCls} value={form.key} placeholder="astrite" onChange={e => setForm({ ...form, key: e.target.value.toLowerCase().replace(/\s+/g, "_") })} /></div>
             <div><Label>Label</Label>
               <input className={inputCls} value={form.label} placeholder="Astrite" onChange={e => setForm({ ...form, label: e.target.value })} /></div>
             <div>

@@ -2,6 +2,25 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifyAdminSession } from "@/lib/auth";
 
+function isMissingColumn(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const maybeCode = "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+  return maybeCode === "42703" || maybeCode === "PGRST204";
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const maybeCode = "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+  return maybeCode === "23505";
+}
+
+function normalizeKey(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+}
+
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const isAdmin = await verifyAdminSession(request);
@@ -12,7 +31,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const updates: Record<string, unknown> = {};
 
     if (body?.game_id !== undefined) updates.game_id = Number(body.game_id);
-    if (body?.key !== undefined) updates.key = String(body.key).trim();
+    if (body?.key !== undefined) updates.key = normalizeKey(body.key);
     if (body?.label !== undefined) updates.label = String(body.label).trim();
     if (body?.image !== undefined) updates.image = String(body.image ?? "").trim();
     if (body?.display_order !== undefined) updates.display_order = Number(body.display_order ?? 0);
@@ -22,16 +41,45 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
-    const { data, error } = await supabaseAdmin!
+    let result = await supabaseAdmin!
       .from("categories")
       .update(updates)
       .eq("id", Number(id))
       .select()
       .single();
 
-    if (error) throw error;
-    return NextResponse.json(data);
-  } catch {
+    if (result.error && isMissingColumn(result.error) && "is_hidden" in updates) {
+      const legacyUpdates = { ...updates };
+      delete legacyUpdates.is_hidden;
+
+      if (Object.keys(legacyUpdates).length === 0) {
+        return NextResponse.json(
+          { error: "Fitur sembunyikan kategori butuh migration terbaru di database." },
+          { status: 400 }
+        );
+      }
+
+      result = await supabaseAdmin!
+        .from("categories")
+        .update(legacyUpdates)
+        .eq("id", Number(id))
+        .select()
+        .single();
+    }
+
+    if (result.error) {
+      if (isUniqueViolation(result.error)) {
+        return NextResponse.json(
+          { error: "Kategori dengan key ini sudah ada untuk game yang dipilih." },
+          { status: 409 }
+        );
+      }
+      throw result.error;
+    }
+
+    return NextResponse.json(result.data);
+  } catch (error) {
+    console.error("Admin categories PUT error:", error);
     return NextResponse.json({ error: "Failed to update category" }, { status: 500 });
   }
 }
@@ -45,7 +93,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const { error } = await supabaseAdmin!.from("categories").delete().eq("id", Number(id));
     if (error) throw error;
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
+    console.error("Admin categories DELETE error:", error);
     return NextResponse.json({ error: "Failed to delete category" }, { status: 500 });
   }
 }

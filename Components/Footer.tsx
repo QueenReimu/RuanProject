@@ -96,9 +96,10 @@ export default function Footer() {
 
   const { name, copyright, socialLinks, operationalHours, adminWhatsAppNumbers } = siteConfig;
   const [admins, setAdmins] = useState<AdminContact[]>(adminWhatsAppNumbers);
-  const [siteTitle, setSiteTitle] = useState(name);
-  const [siteLogo, setSiteLogo] = useState("/4V2.png");
+  const [siteTitle, setSiteTitle] = useState("");
+  const [siteLogo, setSiteLogo] = useState("");
   const [siteDescription, setSiteDescription] = useState("");
+  const [identityLoaded, setIdentityLoaded] = useState(false);
   const mainAdmin = admins[0];
   const discordLink = (socialLinks as { discord?: string }).discord;
 
@@ -141,11 +142,14 @@ export default function Footer() {
         }
       } catch {
         // use fallback config
+        setSiteTitle(name);
+      } finally {
+        setIdentityLoaded(true);
       }
     };
 
     fetchAdminList();
-  }, []);
+  }, [name]);
 
   const footerSections = [
     {
@@ -168,6 +172,8 @@ export default function Footer() {
     },
   ];
   const footerDescription = siteDescription || text.description;
+  const displayTitle = siteTitle.trim() || name;
+  const displayLogo = siteLogo.trim();
 
   return (
     <footer className="border-t border-[var(--border)]" style={{ backgroundColor: "var(--surface)" }}>
@@ -175,8 +181,16 @@ export default function Footer() {
         <div className="grid gap-8 lg:grid-cols-4">
           <div className="space-y-5 lg:col-span-1">
             <Link href="/" className="inline-flex items-center gap-2.5">
-              <img src={siteLogo} alt={siteTitle} className="h-10 w-10 rounded-xl object-cover" />
-              <span className="text-base font-semibold text-[var(--foreground)]">{siteTitle}</span>
+              {displayLogo ? (
+                <img src={displayLogo} alt={displayTitle} className="h-10 w-10 rounded-xl object-cover" />
+              ) : (
+                <div className="h-10 w-10 animate-pulse rounded-xl bg-[var(--surface-muted)]" />
+              )}
+              {identityLoaded ? (
+                <span className="text-base font-semibold text-[var(--foreground)]">{displayTitle}</span>
+              ) : (
+                <div className="h-4 w-28 animate-pulse rounded bg-[var(--surface-muted)]" />
+              )}
             </Link>
             <p className="max-w-xs text-sm leading-relaxed text-[var(--foreground-muted)]">{footerDescription}</p>
 

@@ -175,8 +175,10 @@ function normalizeGame(raw: unknown): GameCard | null {
 export default function GamesPage() {
   const { locale } = useLocale();
   const [copyState, setCopyState] = useState(copy);
+  const [copyLoaded, setCopyLoaded] = useState(false);
   const text = copyState[locale];
-  const [games, setGames] = useState<GameCard[]>(FALLBACK_GAMES);
+  const [games, setGames] = useState<GameCard[]>([]);
+  const [gamesLoaded, setGamesLoaded] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -191,6 +193,10 @@ export default function GamesPage() {
         }
       } catch (error) {
         console.error("Failed to load games copy:", error);
+      } finally {
+        if (isMounted) {
+          setCopyLoaded(true);
+        }
       }
     };
 
@@ -220,6 +226,13 @@ export default function GamesPage() {
         }
       } catch (error) {
         console.error("Failed to load games section data:", error);
+        if (isMounted) {
+          setGames(FALLBACK_GAMES);
+        }
+      } finally {
+        if (isMounted) {
+          setGamesLoaded(true);
+        }
       }
     };
 
@@ -228,6 +241,8 @@ export default function GamesPage() {
       isMounted = false;
     };
   }, []);
+
+  const isReady = copyLoaded && gamesLoaded;
 
   return (
     <div className="min-h-screen text-[var(--foreground)]" style={{ backgroundColor: "var(--background)" }}>
@@ -259,7 +274,42 @@ export default function GamesPage() {
       </section>
 
       <section className="px-4 py-14 sm:px-6 sm:py-16" style={{ backgroundColor: "var(--surface-muted)" }}>
-        <div className="mx-auto max-w-6xl space-y-5">
+        {!isReady ? (
+          <div className="mx-auto max-w-6xl space-y-5">
+            {[0, 1].map((item) => (
+              <div
+                key={item}
+                className="animate-pulse overflow-hidden rounded-3xl border border-[var(--border)]"
+                style={{ backgroundColor: "var(--surface)" }}
+              >
+                <div className="grid lg:grid-cols-[280px_1fr]">
+                  <div className="h-56 bg-[var(--surface-muted)] lg:h-full" />
+                  <div className="space-y-4 p-6 sm:p-7">
+                    <div className="flex items-start gap-3">
+                      <div className="h-12 w-12 rounded-xl bg-[var(--surface-muted)]" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-6 w-40 rounded bg-[var(--surface-muted)]" />
+                        <div className="h-4 w-56 rounded bg-[var(--surface-muted)]" />
+                      </div>
+                    </div>
+                    <div className="h-4 w-full rounded bg-[var(--surface-muted)]" />
+                    <div className="h-4 w-11/12 rounded bg-[var(--surface-muted)]" />
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {[0, 1, 2, 3].map((service) => (
+                        <div key={service} className="h-4 rounded bg-[var(--surface-muted)]" />
+                      ))}
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="h-10 w-28 rounded-xl bg-[var(--surface-muted)]" />
+                      <div className="h-10 w-28 rounded-xl bg-[var(--surface-muted)]" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mx-auto max-w-6xl space-y-5">
           {games.map((game, index) => (
             <motion.article
               key={game.key}
@@ -344,7 +394,8 @@ export default function GamesPage() {
               Belum ada game yang ditampilkan.
             </div>
           ) : null}
-        </div>
+          </div>
+        )}
       </section>
 
       <section className="px-4 py-14 sm:px-6 sm:py-16">

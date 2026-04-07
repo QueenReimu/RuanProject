@@ -3,6 +3,13 @@ import { supabaseAdmin } from "@/lib/supabase";
 
 const db = supabaseAdmin!;
 const GAME_CONTENT_PREFIX = "game_content:";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+  Pragma: "no-cache",
+  Expires: "0",
+};
 
 type GameRow = {
   id: number;
@@ -170,7 +177,7 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json(payload);
+    return NextResponse.json(payload, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.error("Public games GET error:", error);
     return NextResponse.json({ error: "Failed to fetch games" }, { status: 500 });
