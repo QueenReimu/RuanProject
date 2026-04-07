@@ -82,13 +82,13 @@ export function SiteIdentityProvider({
   initialIdentity: SiteIdentity;
   children: React.ReactNode;
 }) {
-  const [identity, setIdentityState] = useState<SiteIdentity>(() => initialIdentity);
+  const [identity, setIdentityState] = useState<SiteIdentity>(() => readStoredIdentity(initialIdentity));
 
   useEffect(() => {
-    const stored = readStoredIdentity(initialIdentity);
-    setIdentityState(stored);
-    persistIdentity(stored);
+    persistIdentity(identity);
+  }, [identity]);
 
+  useEffect(() => {
     const handleIdentityUpdate = (event: Event) => {
       const customEvent = event as CustomEvent<Partial<SiteIdentity>>;
       setIdentityState((current) => {

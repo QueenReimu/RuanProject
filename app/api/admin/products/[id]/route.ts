@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifyAdminSession } from "@/lib/auth";
+import { readProductThemeImageMap, removeProductThemeImages, updateProductThemeImages } from "@/lib/product-theme-images";
 
 type ProductRow = {
   id: number;
@@ -53,6 +54,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const body = await request.json();
     const updates: Record<string, unknown> = {};
+    const hasLightImageUpdate = body && typeof body === "object" && "image_light" in body;
+    const hasDarkImageUpdate = body && typeof body === "object" && "image_dark" in body;
 
     if (body?.category_id !== undefined) updates.category_id = Number(body.category_id);
     if (body?.title !== undefined) updates.title = String(body.title).trim();
@@ -107,7 +110,21 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       .single();
 
     if (error) throw error;
-    return NextResponse.json(data);
+
+    if (hasLightImageUpdate || hasDarkImageUpdate) {
+      await updateProductThemeImages(productId, {
+        ...(hasLightImageUpdate ? { light: body?.image_light } : {}),
+        ...(hasDarkImageUpdate ? { dark: body?.image_dark } : {}),
+      });
+    }
+
+    const productThemeImageMap = await readProductThemeImageMap();
+
+    return NextResponse.json({
+      ...data,
+      image_light: productThemeImageMap[productId]?.light ?? "",
+      image_dark: productThemeImageMap[productId]?.dark ?? "",
+    });
   } catch {
     return NextResponse.json({ error: "Failed to update product" }, { status: 500 });
   }
@@ -120,8 +137,10 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     if (!isAdmin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;
-    const { error } = await supabaseAdmin!.from("products").delete().eq("id", Number(id));
+    const productId = Number(id);
+    const { error } = await supabaseAdmin!.from("products").delete().eq("id", productId);
     if (error) throw error;
+    await removeProductThemeImages(productId);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Failed to delete product" }, { status: 500 });

@@ -24,6 +24,8 @@ interface Product {
   is_bestseller: boolean;
   is_hidden: boolean;
   image: string;
+  image_light?: string;
+  image_dark?: string;
   display_order: number;
   categories?: { id: number; key: string; label: string; games: { key: string; label: string } };
 }
@@ -409,6 +411,7 @@ function ProductsTab({ products, categories, settings, onRefresh }: {
   settings: Record<string, string>;
   onRefresh: () => void;
 }) {
+  const { resolvedTheme } = useTheme();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [filterGame, setFilterGame] = useState<string>("all");
@@ -418,7 +421,7 @@ function ProductsTab({ products, categories, settings, onRefresh }: {
   const emptyForm = {
     category_id: categories[0]?.id ?? 1,
     title: "", description: "", price: "", original_price: "",
-    discount: 0, is_bestseller: false, is_hidden: false, image: "", display_order: 0,
+    discount: 0, is_bestseller: false, is_hidden: false, image: "", image_light: "", image_dark: "", display_order: 0,
   };
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -476,6 +479,8 @@ function ProductsTab({ products, categories, settings, onRefresh }: {
       is_bestseller: p.is_bestseller,
       is_hidden: p.is_hidden,
       image: p.image,
+      image_light: p.image_light ?? "",
+      image_dark: p.image_dark ?? "",
       display_order: p.display_order,
     });
     setEditingId(p.id);
@@ -539,6 +544,8 @@ function ProductsTab({ products, categories, settings, onRefresh }: {
         is_bestseller: product.is_bestseller,
         is_hidden: product.is_hidden,
         image: product.image ?? "",
+        image_light: product.image_light ?? "",
+        image_dark: product.image_dark ?? "",
         display_order: Number(product.display_order ?? 0) + 1,
       };
 
@@ -568,6 +575,11 @@ function ProductsTab({ products, categories, settings, onRefresh }: {
       body: JSON.stringify({ is_hidden: !p.is_hidden }),
     });
     onRefresh();
+  };
+
+  const resolveProductPreviewImage = (product: Product) => {
+    const themedImage = resolvedTheme === "dark" ? normalizeImageSrc(product.image_dark) : normalizeImageSrc(product.image_light);
+    return themedImage || normalizeImageSrc(product.image);
   };
 
   const toggleSelection = (id: number) => {
@@ -824,10 +836,29 @@ function ProductsTab({ products, categories, settings, onRefresh }: {
               <input type="number" className={inputCls} value={form.display_order} onChange={e => setForm({ ...form, display_order: Number(e.target.value) })} /></div>
             <div className="col-span-2">
               <ImageUpload
-                label="Gambar Produk"
+                label="Gambar Default"
                 value={form.image}
                 onChange={(path) => setForm({ ...form, image: path })}
               />
+            </div>
+            <div>
+              <ImageUpload
+                label="Gambar Light Mode"
+                value={form.image_light}
+                onChange={(path) => setForm({ ...form, image_light: path })}
+              />
+            </div>
+            <div>
+              <ImageUpload
+                label="Gambar Dark Mode"
+                value={form.image_dark}
+                onChange={(path) => setForm({ ...form, image_dark: path })}
+              />
+            </div>
+            <div className="col-span-2">
+              <p className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-xs text-[var(--foreground-muted)]">
+                Kalau gambar light/dark dikosongkan, produk otomatis pakai gambar default.
+              </p>
             </div>
             <div className="col-span-2 flex items-center gap-3">
               <input type="checkbox" id="bestseller" checked={form.is_bestseller}
@@ -874,9 +905,9 @@ function ProductsTab({ products, categories, settings, onRefresh }: {
             p.is_hidden ? "bg-black border-red-500/50" : "bg-[var(--surface)] border-[var(--border)] hover:border-emerald-500/30"
           }`}>
             <div className={`relative h-36 ${p.is_hidden ? "bg-black" : "bg-[var(--surface)]"}`}>
-              {p.image ? (
+              {resolveProductPreviewImage(p) ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.image} alt={p.title} className={`w-full h-full object-contain p-3 ${p.is_hidden ? "opacity-20 grayscale" : ""}`} />
+                <img src={resolveProductPreviewImage(p)} alt={p.title} className={`w-full h-full object-contain p-3 ${p.is_hidden ? "opacity-20 grayscale" : ""}`} />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-[var(--foreground-muted)]">No Image</div>
               )}
@@ -905,6 +936,17 @@ function ProductsTab({ products, categories, settings, onRefresh }: {
               <p className="text-xs text-[var(--foreground-muted)] mb-1">{p.categories?.games?.label} ? {p.categories?.label}</p>
               <h3 className="font-semibold text-[var(--foreground)] text-sm mb-1">{p.title}</h3>
               <p className="text-xs text-[var(--foreground-muted)] line-clamp-2 mb-3">{p.description}</p>
+              <div className="mb-3 flex flex-wrap gap-1">
+                <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] text-[var(--foreground-muted)]">
+                  Preview {resolvedTheme === "dark" ? "dark" : "light"}
+                </span>
+                {normalizeImageSrc(p.image_light) ? (
+                  <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] text-violet-300">Light image</span>
+                ) : null}
+                {normalizeImageSrc(p.image_dark) ? (
+                  <span className="rounded-full bg-indigo-500/15 px-2 py-0.5 text-[10px] text-indigo-300">Dark image</span>
+                ) : null}
+              </div>
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-emerald-400 font-bold">{cardPrice}</span>
                 {cardOriginalPrice && (

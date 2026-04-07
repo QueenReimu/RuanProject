@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifyAdminSession } from "@/lib/auth";
+import { readProductThemeImageMap, updateProductThemeImages } from "@/lib/product-theme-images";
 
 type ProductRow = {
   id: number;
@@ -49,19 +50,28 @@ export async function GET(request: Request) {
     const isAdmin = await verifyAdminSession(request);
     if (!isAdmin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { data, error } = await supabaseAdmin!
-      .from("products")
-      .select(`
-        *,
-        categories (id, key, label, game_id,
-          games (id, key, label)
-        )
-      `)
-      .order("display_order")
-      .order("id");
+    const [{ data, error }, productThemeImageMap] = await Promise.all([
+      supabaseAdmin!
+        .from("products")
+        .select(`
+          *,
+          categories (id, key, label, game_id,
+            games (id, key, label)
+          )
+        `)
+        .order("display_order")
+        .order("id"),
+      readProductThemeImageMap(),
+    ]);
 
     if (error) throw error;
-    return NextResponse.json(data ?? []);
+    return NextResponse.json(
+      (data ?? []).map((product) => ({
+        ...product,
+        image_light: productThemeImageMap[Number(product.id)]?.light ?? "",
+        image_dark: productThemeImageMap[Number(product.id)]?.dark ?? "",
+      }))
+    );
   } catch {
     return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 });
   }
@@ -110,7 +120,19 @@ export async function POST(request: Request) {
       .single();
 
     if (error) throw error;
-    return NextResponse.json(data, { status: 201 });
+    await updateProductThemeImages(Number(data.id), {
+      light: body?.image_light,
+      dark: body?.image_dark,
+    });
+
+    return NextResponse.json(
+      {
+        ...data,
+        image_light: String(body?.image_light ?? "").trim(),
+        image_dark: String(body?.image_dark ?? "").trim(),
+      },
+      { status: 201 }
+    );
   } catch {
     return NextResponse.json({ error: "Failed to create product" }, { status: 500 });
   }

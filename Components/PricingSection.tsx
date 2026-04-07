@@ -4,12 +4,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BadgeCheck, MessageCircle, ShieldCheck, Sparkles, X, Zap } from "lucide-react";
 import { useLocale, type Locale } from "@/Components/LocaleProvider";
+import { useTheme } from "@/Components/ThemeProvider";
 
 type ProductItem = {
   title: string;
   description: string;
   price: string;
   image: string;
+  imageLight?: string;
+  imageDark?: string;
   originalPrice?: string;
   discount?: number;
   bestseller?: boolean;
@@ -140,6 +143,16 @@ function safeImageSrc(value: string | null | undefined, fallback: string) {
   return src.length > 0 ? src : fallback;
 }
 
+function optionalImageSrc(value: string | null | undefined) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function resolveProductImage(item: ProductItem, theme: "light" | "dark") {
+  const themedImage = theme === "dark" ? optionalImageSrc(item.imageDark) : optionalImageSrc(item.imageLight);
+  if (themedImage) return themedImage;
+  return safeImageSrc(item.image, FALLBACK_IMAGES.product);
+}
+
 const CATEGORY_ALIAS_GROUPS: Record<string, string[]> = {
   primo: ["primo", "primogem", "primos", "genesiscrystal"],
   explore: ["explore", "explorasi", "exploration"],
@@ -258,14 +271,16 @@ function ProductCard({
   onBuy,
   buyLabel,
   popularLabel,
+  theme,
 }: {
   item: ProductItem;
   gameName: string;
   onBuy: (item: ProductItem, gameName: string) => void;
   buyLabel: string;
   popularLabel: string;
+  theme: "light" | "dark";
 }) {
-  const productImage = safeImageSrc(item.image, FALLBACK_IMAGES.product);
+  const productImage = resolveProductImage(item, theme);
 
   return (
     <article
@@ -374,12 +389,14 @@ function ConfirmModal({
   adminData,
   onClose,
   text,
+  theme,
 }: {
   product: ProductItem;
   gameName: string;
   adminData: Record<string, AdminInfo>;
   onClose: () => void;
   text: PricingCopy;
+  theme: "light" | "dark";
 }) {
   const adminKeys = Object.keys(adminData);
   const [selectedAdmin, setSelectedAdmin] = useState(adminKeys[0] || "");
@@ -393,7 +410,7 @@ function ConfirmModal({
   }, [onClose]);
 
   const currentAdmin = adminData[selectedAdmin];
-  const productImage = safeImageSrc(product.image, FALLBACK_IMAGES.product);
+  const productImage = resolveProductImage(product, theme);
 
   const handleConfirm = () => {
     if (!currentAdmin) return;
@@ -511,6 +528,7 @@ function ConfirmModal({
 
 export default function PricingSection() {
   const { locale } = useLocale();
+  const { resolvedTheme } = useTheme();
   const text = copy[locale];
 
   const [game, setGame] = useState("");
@@ -779,6 +797,7 @@ export default function PricingSection() {
                   onBuy={(product, gameName) => setBuyProduct({ item: product, gameName })}
                   buyLabel={text.buy}
                   popularLabel={text.popular}
+                  theme={resolvedTheme}
                 />
               </motion.div>
             ))}
@@ -830,6 +849,7 @@ export default function PricingSection() {
             adminData={adminData}
             onClose={() => setBuyProduct(null)}
             text={text}
+            theme={resolvedTheme}
           />
         )}
       </AnimatePresence>

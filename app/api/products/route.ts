@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { readCategoryHiddenMap } from "@/lib/category-hidden-store";
+import { readProductThemeImageMap } from "@/lib/product-theme-images";
 import { siteConfig } from "@/config/site";
 
 // Use the admin client for server-side data fetching
@@ -190,7 +191,10 @@ export async function GET() {
       : null;
     const categoriesError = categoriesFallback ? categoriesFallback.error : categoriesWithHidden.error;
     if (categoriesError) throw categoriesError;
-    const [categoryHiddenMap] = await Promise.all([readCategoryHiddenMap()]);
+    const [categoryHiddenMap, productThemeImageMap] = await Promise.all([
+      readCategoryHiddenMap(),
+      readProductThemeImageMap(),
+    ]);
     const categories = (categoriesFallback?.data ?? categoriesWithHidden.data ?? []) as Array<{
       id: number;
       game_id: number;
@@ -199,6 +203,7 @@ export async function GET() {
       image: string;
       is_hidden?: boolean;
       products: Array<{
+        id: number;
         title: string;
         description: string;
         price: string;
@@ -296,6 +301,7 @@ export async function GET() {
         label: cat.label,
         image: cat.image,
         products: sortedProducts.map((p: {
+          id: number;
           title: string;
           description: string;
           price: string;
@@ -307,11 +313,14 @@ export async function GET() {
           const promoData = discountDayActive
             ? computeDiscountDayValues(p.price, discountDayPercent, discountDayMinPrice)
             : null;
+          const themeImages = productThemeImageMap[p.id] ?? {};
           return {
             title: p.title,
             description: p.description,
             price: promoData?.price ?? p.price,
             image: p.image,
+            imageLight: themeImages.light,
+            imageDark: themeImages.dark,
             originalPrice: promoData ? p.price : p.original_price,
             discount: promoData?.discount ?? p.discount,
             bestseller: p.is_bestseller,
